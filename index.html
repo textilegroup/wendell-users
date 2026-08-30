@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central de Acesso</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --vermelho:#c8102e; --vermelho-esc:#9b0c23;
+  --tinta:#16181d; --tinta-2:#5b6270; --tinta-3:#8b93a1;
+  --linha:#e3e6ec; --fundo:#f4f6f9; --papel:#fff;
+  --ok:#0f7b4f; --alerta:#b45309; --erro:#b91c1c;
+  --raio:12px; --sombra:0 1px 2px rgba(16,18,24,.06),0 8px 24px rgba(16,18,24,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--fundo);color:var(--tinta);-webkit-font-smoothing:antialiased}
+.oculto{display:none!important}
+
+/* ---------- LOGIN ---------- */
+#tela-login{min-height:100vh;display:grid;place-items:center;padding:24px}
+.cartao-login{width:100%;max-width:396px;background:var(--papel);border:1px solid var(--linha);
+  border-radius:16px;box-shadow:var(--sombra);padding:36px 32px}
+.marca{display:flex;align-items:center;gap:11px;margin-bottom:26px}
+.marca-simbolo{width:38px;height:38px;border-radius:10px;background:var(--vermelho);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:15px;letter-spacing:.5px}
+.marca-txt strong{display:block;font-size:15px;letter-spacing:-.2px}
+.marca-txt span{font-size:12.5px;color:var(--tinta-3)}
+h1{font-size:20px;letter-spacing:-.3px;margin-bottom:5px}
+.sub{font-size:13.5px;color:var(--tinta-2);margin-bottom:22px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--tinta-2);margin:0 0 6px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--linha);border-radius:9px;
+  font:inherit;font-size:14px;background:var(--papel);color:var(--tinta);transition:border-color .12s,box-shadow .12s}
+input:focus,select:focus{outline:0;border-color:var(--vermelho);box-shadow:0 0 0 3px rgba(200,16,46,.12)}
+.campo{margin-bottom:15px}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;transition:filter .12s,background .12s}
+.btn{width:100%;padding:11px;background:var(--vermelho);color:#fff;font-weight:600;font-size:14.5px}
+.btn:hover:not(:disabled){background:var(--vermelho-esc)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.link{background:none;color:var(--vermelho);font-size:13px;font-weight:600;padding:4px;width:auto}
+.link:hover{text-decoration:underline}
+.rodape-login{margin-top:18px;padding-top:16px;border-top:1px solid var(--linha);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.aviso{padding:11px 13px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none;line-height:1.45}
+.aviso.erro{background:#fef2f2;color:var(--erro);border:1px solid #fecaca;display:block}
+.aviso.ok{background:#f0fdf4;color:var(--ok);border:1px solid #bbf7d0;display:block}
+.aviso.info{background:#fffbeb;color:var(--alerta);border:1px solid #fde68a;display:block}
+
+/* ---------- APP ---------- */
+.topo{background:var(--papel);border-bottom:1px solid var(--linha);position:sticky;top:0;z-index:20}
+.topo-int{max-width:1080px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:16px}
+.topo .marca{margin:0;flex:1}
+.abas{display:flex;gap:2px;background:var(--fundo);padding:3px;border-radius:9px}
+.aba{padding:6px 14px;font-size:13.5px;font-weight:600;color:var(--tinta-2);background:none;border-radius:7px}
+.aba.on{background:var(--papel);color:var(--tinta);box-shadow:0 1px 2px rgba(16,18,24,.08)}
+.usuario-topo{display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1px solid var(--linha)}
+.avatar{width:31px;height:31px;border-radius:50%;background:var(--vermelho);color:#fff;display:grid;
+  place-items:center;font-size:12.5px;font-weight:700}
+.usuario-nome{font-size:13.5px;font-weight:600;line-height:1.2}
+.usuario-nivel{font-size:11.5px;color:var(--tinta-3);text-transform:capitalize}
+.sair{background:none;color:var(--tinta-3);font-size:13px;padding:6px 10px;border-radius:7px;width:auto}
+.sair:hover{background:var(--fundo);color:var(--erro)}
+main{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+.cabeca{margin-bottom:22px}
+.cabeca h2{font-size:19px;letter-spacing:-.3px;margin-bottom:3px}
+.cabeca p{font-size:13.5px;color:var(--tinta-2)}
+
+/* portal */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:14px}
+.ferramenta{background:var(--papel);border:1px solid var(--linha);border-radius:var(--raio);padding:18px;
+  text-decoration:none;color:inherit;display:block;box-shadow:var(--sombra);transition:transform .12s,border-color .12s}
+.ferramenta:hover{transform:translateY(-2px);border-color:#cdd3dd}
+.ferramenta[data-sem-url="1"]{opacity:.55;pointer-events:none}
+.ferramenta-topo{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.ferramenta-icone{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  color:#fff;font-weight:700;font-size:13px}
+.selo{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  padding:3px 7px;border-radius:5px;background:var(--fundo);color:var(--tinta-3)}
+.ferramenta h3{font-size:15px;margin-bottom:3px;letter-spacing:-.2px}
+.ferramenta p{font-size:13px;color:var(--tinta-2);line-height:1.4}
+.vazio{background:var(--papel);border:1px dashed #cdd3dd;border-radius:var(--raio);
+  padding:44px 24px;text-align:center;color:var(--tinta-2);font-size:14px}
+
+/* tabelas adm */
+.painel{background:var(--papel);border:1px solid var(--linha);border-radius:var(--raio);
+  box-shadow:var(--sombra);overflow:hidden;margin-bottom:22px}
+.painel-cabeca{padding:15px 18px;border-bottom:1px solid var(--linha);display:flex;
+  justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.painel-cabeca h3{font-size:14.5px;letter-spacing:-.1px}
+.painel-cabeca span{font-size:12.5px;color:var(--tinta-3);font-weight:400}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--tinta-3);
+  padding:10px 18px;border-bottom:1px solid var(--linha);background:#fafbfc;font-weight:700}
+td{padding:11px 18px;border-bottom:1px solid #f0f2f6;font-size:13.5px;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td select,td input{padding:6px 9px;font-size:13px;border-radius:7px}
+td select{max-width:150px}
+.pilula{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px}
+.pilula.ativo{background:#f0fdf4;color:var(--ok)}
+.pilula.inativo{background:#fef2f2;color:var(--erro)}
+.mini{width:auto;padding:6px 12px;font-size:13px;background:var(--fundo);color:var(--tinta);font-weight:600}
+.mini:hover{background:#e9edf3}
+.mini.primaria{background:var(--vermelho);color:#fff}
+.mini.primaria:hover{background:var(--vermelho-esc)}
+.carregando{padding:44px;text-align:center;color:var(--tinta-3);font-size:14px}
+.rolagem{overflow-x:auto}
+@media(max-width:720px){
+  .topo-int{flex-wrap:wrap;gap:10px}.abas{order:3;width:100%}
+  .usuario-topo{border:0;padding:0}main{padding:22px 16px 48px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="tela-login" class="oculto">
+  <div class="cartao-login">
+    <div class="marca">
+      <div class="marca-simbolo">FW</div>
+      <div class="marca-txt"><strong>Central de Acesso</strong><span>Fiorella &middot; Wendell</span></div>
+    </div>
+
+    <div id="bloco-entrar">
+      <h1>Entrar</h1>
+      <p class="sub">Use o e-mail cadastrado para acessar as ferramentas.</p>
+      <div id="aviso-login" class="aviso"></div>
+      <form id="form-entrar">
+        <div class="campo"><label for="e-email">E-mail</label>
+          <input id="e-email" type="email" autocomplete="username" required></div>
+        <div class="campo"><label for="e-senha">Senha</label>
+          <input id="e-senha" type="password" autocomplete="current-password" required></div>
+        <button class="btn" type="submit" id="btn-entrar">Entrar</button>
+      </form>
+      <div class="rodape-login">
+        <button class="link" type="button" onclick="mostrarBloco('criar')">Criar conta</button>
+        <button class="link" type="button" onclick="mostrarBloco('recuperar')">Esqueci a senha</button>
+      </div>
+    </div>
+
+    <div id="bloco-criar" class="oculto">
+      <h1>Criar conta</h1>
+      <p class="sub">Depois de criar, um administrador libera seu acesso.</p>
+      <div id="aviso-criar" class="aviso"></div>
+      <form id="form-criar">
+        <div class="campo"><label for="c-nome">Nome completo</label>
+          <input id="c-nome" type="text" autocomplete="name" required></div>
+        <div class="campo"><label for="c-email">E-mail</label>
+          <input id="c-email" type="email" autocomplete="username" required></div>
+        <div class="campo"><label for="c-senha">Senha (mínimo 8 caracteres)</label>
+          <input id="c-senha" type="password" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn" type="submit" id="btn-criar">Criar conta</button>
+      </form>
+      <div class="rodape-login">
+        <button class="link" type="button" onclick="mostrarBloco('entrar')">&larr; Voltar para o login</button>
+      </div>
+    </div>
+
+    <div id="bloco-recuperar" class="oculto">
+      <h1>Recuperar senha</h1>
+      <p class="sub">Enviamos um link de redefinição para o seu e-mail.</p>
+      <div id="aviso-recuperar" class="aviso"></div>
+      <form id="form-recuperar">
+        <div class="campo"><label for="r-email">E-mail</label>
+          <input id="r-email" type="email" autocomplete="username" required></div>
+        <button class="btn" type="submit" id="btn-recuperar">Enviar link</button>
+      </form>
+      <div class="rodape-login">
+        <button class="link" type="button" onclick="mostrarBloco('entrar')">&larr; Voltar para o login</button>
+      </div>
+    </div>
+
+    <div id="bloco-nova-senha" class="oculto">
+      <h1>Definir nova senha</h1>
+      <p class="sub">Escolha uma senha nova para a sua conta.</p>
+      <div id="aviso-nova" class="aviso"></div>
+      <form id="form-nova-senha">
+        <div class="campo"><label for="n-senha">Nova senha (mínimo 8 caracteres)</label>
+          <input id="n-senha" type="password" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn" type="submit" id="btn-nova">Salvar senha</button>
+      </form>
+    </div>
+
+    <div id="bloco-pendente" class="oculto">
+      <h1>Acesso aguardando liberação</h1>
+      <p class="sub">Sua conta foi criada, mas ainda não foi liberada.</p>
+      <div class="aviso info" style="display:block">
+        Peça a um administrador para ativar o seu usuário na Central de Acesso.
+        Assim que ele liberar, é só entrar de novo.
+      </div>
+      <button class="btn" type="button" onclick="sair()">Sair</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="tela-app" class="oculto">
+  <header class="topo"><div class="topo-int">
+    <div class="marca">
+      <div class="marca-simbolo">FW</div>
+      <div class="marca-txt"><strong>Central de Acesso</strong><span>Fiorella &middot; Wendell</span></div>
+    </div>
+    <div class="abas" id="abas">
+      <button class="aba on" data-aba="portal">Ferramentas</button>
+      <button class="aba oculto" data-aba="adm" id="aba-adm">Administração</button>
+    </div>
+    <div class="usuario-topo">
+      <div class="avatar" id="avatar">--</div>
+      <div><div class="usuario-nome" id="nome-usuario">—</div>
+           <div class="usuario-nivel" id="nivel-usuario">—</div></div>
+      <button class="sair" onclick="sair()">Sair</button>
+    </div>
+  </div></header>
+
+  <main>
+    <section id="pg-portal">
+      <div class="cabeca"><h2>Suas ferramentas</h2>
+        <p id="sub-portal">Escolha uma ferramenta para abrir.</p></div>
+      <div class="grade" id="grade-ferramentas"></div>
+    </section>
+
+    <section id="pg-adm" class="oculto">
+      <div class="cabeca"><h2>Administração</h2>
+        <p>Libere usuários, defina níveis e configure o que cada nível enxerga.</p></div>
+
+      <div class="painel">
+        <div class="painel-cabeca"><h3>Usuários <span id="contagem-usuarios"></span></h3></div>
+        <div class="rolagem"><table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Setor</th><th>Nível</th><th>Situação</th><th>Último acesso</th></tr></thead>
+          <tbody id="tb-usuarios"><tr><td colspan="6" class="carregando">Carregando…</td></tr></tbody>
+        </table></div>
+      </div>
+
+      <div class="painel">
+        <div class="painel-cabeca">
+          <h3>Ferramentas <span>— cole aqui a URL de cada página</span></h3>
+          <button class="mini primaria" onclick="novaFerramenta()">+ Adicionar</button>
+        </div>
+        <div class="rolagem"><table>
+          <thead><tr><th>Chave</th><th>Nome</th><th style="min-width:280px">URL</th><th>Ativa</th><th></th></tr></thead>
+          <tbody id="tb-ferramentas"><tr><td colspan="5" class="carregando">Carregando…</td></tr></tbody>
+        </table></div>
+      </div>
+
+      <div class="painel">
+        <div class="painel-cabeca"><h3>Acessos por nível
+          <span>— administrador enxerga tudo automaticamente</span></h3></div>
+        <div class="rolagem"><table>
+          <thead><tr><th>Ferramenta</th><th>Nível usuário</th><th>Nível consulta</th></tr></thead>
+          <tbody id="tb-acessos"><tr><td colspan="3" class="carregando">Carregando…</td></tr></tbody>
+        </table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO
+   ============================================================ */
+const SUPABASE_URL  = 'https://eepmlsdbtcvsjxdcvimi.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_048Dv-jRALn34Ythhj9ngA_fZ1gsNI_';
+
+// storageKey padrão de propósito: assim qualquer outro HTML do mesmo
+// domínio que crie um client deste projeto já enxerga a mesma sessão.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+});
+
+let PERFIL = null, MEU_ID = null;
+
+/* ---------- utilidades ---------- */
+const $ = id => document.getElementById(id);
+function avisar(alvo, texto, tipo){
+  const el = $('aviso-'+alvo);
+  el.className = 'aviso ' + (tipo||'erro');
+  el.textContent = texto;
+}
+function limparAviso(alvo){ $('aviso-'+alvo).className = 'aviso'; }
+function iniciais(nome){
+  const p = (nome||'?').trim().split(/\s+/);
+  return ((p[0]||'?')[0] + (p.length>1 ? p[p.length-1][0] : '')).toUpperCase();
+}
+function traduzErro(msg){
+  const m = (msg||'').toLowerCase();
+  if(m.includes('invalid login')) return 'E-mail ou senha incorretos.';
+  if(m.includes('email not confirmed')) return 'Confirme o e-mail antes de entrar. Verifique sua caixa de entrada.';
+  if(m.includes('already registered') || m.includes('already been registered'))
+    return 'Esse e-mail já tem conta. Use "Esqueci a senha" se precisar.';
+  if(m.includes('password should be')) return 'A senha precisa ter pelo menos 8 caracteres.';
+  if(m.includes('rate limit') || m.includes('too many')) return 'Muitas tentativas. Aguarde um minuto.';
+  return msg || 'Não foi possível concluir. Tente de novo.';
+}
+function mostrarBloco(qual){
+  ['entrar','criar','recuperar','nova-senha','pendente']
+    .forEach(b => $('bloco-'+b).classList.toggle('oculto', b !== qual));
+  $('tela-login').classList.remove('oculto');
+  $('tela-app').classList.add('oculto');
+}
+function proximoDestino(){
+  const p = new URLSearchParams(location.search).get('next');
+  if(!p) return null;
+  try{
+    const u = new URL(p, location.href);
+    return u.origin === location.origin ? u.href : null;  // só o próprio domínio
+  }catch(e){ return null; }
+}
+
+/* ============================================================
+   INICIALIZAÇÃO
+   ============================================================ */
+(async function(){
+  // fluxo de redefinição de senha vindo do e-mail
+  if(location.hash.includes('type=recovery')){
+    mostrarBloco('nova-senha');
+    return;
+  }
+  const { data:{ session } } = await sb.auth.getSession();
+  session ? await entrarNoApp() : mostrarBloco('entrar');
+})();
+
+async function entrarNoApp(){
+  const { data:{ session } } = await sb.auth.getSession();
+  MEU_ID = session?.user?.id || null;
+  const { data, error } = await sb.rpc('app_perfil');
+  if(error || !data || !data.length){
+    await sb.auth.signOut();
+    mostrarBloco('entrar');
+    avisar('login','Não foi possível carregar seu perfil. Entre novamente.');
+    return;
+  }
+  PERFIL = data[0];
+
+  if(!PERFIL.ativo){ mostrarBloco('pendente'); return; }
+
+  const destino = proximoDestino();
+  if(destino){ location.replace(destino); return; }
+
+  sb.rpc('app_marcar_acesso');
+
+  $('tela-login').classList.add('oculto');
+  $('tela-app').classList.remove('oculto');
+  $('nome-usuario').textContent = PERFIL.nome;
+  $('nivel-usuario').textContent = PERFIL.nivel;
+  $('avatar').textContent = iniciais(PERFIL.nome);
+  if(PERFIL.nivel === 'admin') $('aba-adm').classList.remove('oculto');
+
+  carregarPortal();
+}
+
+async function sair(){
+  await sb.auth.signOut();
+  location.href = location.pathname;
+}
+
+/* ============================================================
+   AUTENTICAÇÃO
+   ============================================================ */
+$('form-entrar').addEventListener('submit', async e => {
+  e.preventDefault(); limparAviso('login');
+  const b = $('btn-entrar'); b.disabled = true; b.textContent = 'Entrando…';
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('e-email').value.trim(), password: $('e-senha').value
+  });
+  b.disabled = false; b.textContent = 'Entrar';
+  if(error){ avisar('login', traduzErro(error.message)); return; }
+  await entrarNoApp();
+});
+
+$('form-criar').addEventListener('submit', async e => {
+  e.preventDefault(); limparAviso('criar');
+  const b = $('btn-criar'); b.disabled = true; b.textContent = 'Criando…';
+  const { data, error } = await sb.auth.signUp({
+    email: $('c-email').value.trim(),
+    password: $('c-senha').value,
+    options:{ data:{ nome: $('c-nome').value.trim() } }
+  });
+  b.disabled = false; b.textContent = 'Criar conta';
+  if(error){ avisar('criar', traduzErro(error.message)); return; }
+  if(data.session){ await entrarNoApp(); return; }
+  avisar('criar','Conta criada. Confirme o e-mail que enviamos e depois faça login.','ok');
+});
+
+$('form-recuperar').addEventListener('submit', async e => {
+  e.preventDefault(); limparAviso('recuperar');
+  const b = $('btn-recuperar'); b.disabled = true; b.textContent = 'Enviando…';
+  const { error } = await sb.auth.resetPasswordForEmail($('r-email').value.trim(), {
+    redirectTo: location.origin + location.pathname
+  });
+  b.disabled = false; b.textContent = 'Enviar link';
+  avisar('recuperar', error ? traduzErro(error.message)
+    : 'Se existir conta com esse e-mail, o link foi enviado.', error ? 'erro' : 'ok');
+});
+
+$('form-nova-senha').addEventListener('submit', async e => {
+  e.preventDefault(); limparAviso('nova');
+  const b = $('btn-nova'); b.disabled = true; b.textContent = 'Salvando…';
+  const { error } = await sb.auth.updateUser({ password: $('n-senha').value });
+  b.disabled = false; b.textContent = 'Salvar senha';
+  if(error){ avisar('nova', traduzErro(error.message)); return; }
+  history.replaceState(null,'',location.pathname);
+  await entrarNoApp();
+});
+
+/* ============================================================
+   ABAS
+   ============================================================ */
+$('abas').addEventListener('click', e => {
+  const b = e.target.closest('.aba'); if(!b) return;
+  document.querySelectorAll('.aba').forEach(a => a.classList.toggle('on', a === b));
+  $('pg-portal').classList.toggle('oculto', b.dataset.aba !== 'portal');
+  $('pg-adm').classList.toggle('oculto', b.dataset.aba !== 'adm');
+  if(b.dataset.aba === 'adm') carregarAdm();
+});
+
+/* ============================================================
+   PORTAL
+   ============================================================ */
+async function carregarPortal(){
+  const { data, error } = await sb.rpc('app_meu_portal');
+  const grade = $('grade-ferramentas');
+  if(error){ grade.innerHTML = '<div class="vazio">Erro ao carregar as ferramentas.</div>'; return; }
+  if(!data.length){
+    grade.innerHTML = '<div class="vazio">Nenhuma ferramenta liberada para o seu nível ainda.<br>' +
+      'Fale com um administrador.</div>';
+    return;
+  }
+  const rotulo = { admin:'Total', editar:'Edição', ver:'Leitura' };
+  grade.innerHTML = data.map(f => {
+    const semUrl = !f.url || f.url === '#';
+    return `<a class="ferramenta" data-sem-url="${semUrl?1:0}"
+        href="${semUrl ? '#' : escapar(f.url)}" ${semUrl?'':'target="_blank" rel="noopener"'}>
+      <div class="ferramenta-topo">
+        <div class="ferramenta-icone" style="background:${escapar(f.cor)}">${escapar(f.icone)}</div>
+        <span class="selo">${semUrl ? 'sem URL' : rotulo[f.permissao] || f.permissao}</span>
+      </div>
+      <h3>${escapar(f.nome)}</h3>
+      <p>${escapar(f.descricao || '')}</p>
+    </a>`;
+  }).join('');
+  $('sub-portal').textContent = data.length + (data.length === 1
+    ? ' ferramenta liberada para você.' : ' ferramentas liberadas para você.');
+}
+function escapar(t){
+  return String(t ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   ADMINISTRAÇÃO
+   ============================================================ */
+async function carregarAdm(){ await Promise.all([carregarUsuarios(), carregarFerramentas()]); }
+
+async function carregarUsuarios(){
+  const { data, error } = await sb.from('app_usuarios')
+    .select('*').order('ativo',{ascending:false}).order('nome');
+  const tb = $('tb-usuarios');
+  if(error){ tb.innerHTML = '<tr><td colspan="6" class="carregando">Erro ao carregar.</td></tr>'; return; }
+  $('contagem-usuarios').textContent =
+    '— ' + data.length + ' cadastrados, ' + data.filter(u=>u.ativo).length + ' ativos';
+  tb.innerHTML = data.map(u => { const eu = u.user_id === MEU_ID; return `<tr>
+    <td><strong>${escapar(u.nome)}</strong>${eu?' <span class="selo">você</span>':''}</td>
+    <td style="color:var(--tinta-2)">${escapar(u.email)}</td>
+    <td><input value="${escapar(u.setor||'')}" placeholder="—" style="max-width:130px"
+         onchange="salvarUsuario('${u.user_id}','setor',this.value)"></td>
+    <td><select ${eu?'disabled title="Você não pode alterar o próprio nível"':''}
+         onchange="salvarUsuario('${u.user_id}','nivel',this.value)">
+      ${['admin','usuario','consulta'].map(n =>
+        `<option value="${n}" ${u.nivel===n?'selected':''}>${n[0].toUpperCase()+n.slice(1)}</option>`).join('')}
+    </select></td>
+    <td><button class="pilula ${u.ativo?'ativo':'inativo'}" style="border:0;cursor:${eu?'not-allowed':'pointer'}"
+         ${eu?'disabled title="Você não pode desativar a própria conta"':
+              `onclick="salvarUsuario('${u.user_id}','ativo',${!u.ativo})"`}>
+         ${u.ativo?'Ativo':'Inativo'}</button></td>
+    <td style="color:var(--tinta-3);font-size:12.5px">${
+      u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleString('pt-BR',
+        {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'nunca'}</td>
+  </tr>`; }).join('');
+}
+
+async function salvarUsuario(id, campo, valor){
+  const { error } = await sb.from('app_usuarios').update({[campo]:valor}).eq('user_id', id);
+  if(error) alert('Não foi possível salvar: ' + error.message);
+  carregarUsuarios();
+}
+
+async function carregarFerramentas(){
+  const [{ data:fs, error:e1 }, { data:acs, error:e2 }] = await Promise.all([
+    sb.from('app_ferramentas').select('*').order('ordem'),
+    sb.from('app_acessos').select('*').is('user_id', null)
+  ]);
+  const tbF = $('tb-ferramentas'), tbA = $('tb-acessos');
+  if(e1||e2){ tbF.innerHTML = '<tr><td colspan="5" class="carregando">Erro ao carregar.</td></tr>'; return; }
+
+  tbF.innerHTML = fs.map(f => `<tr>
+    <td><code style="font-size:12.5px;color:var(--tinta-3)">${escapar(f.slug)}</code></td>
+    <td><input value="${escapar(f.nome)}" style="max-width:160px"
+         onchange="salvarFerramenta('${f.slug}','nome',this.value)"></td>
+    <td><input value="${escapar(f.url)}" placeholder="https://…"
+         onchange="salvarFerramenta('${f.slug}','url',this.value)"></td>
+    <td><button class="pilula ${f.ativa?'ativo':'inativo'}" style="border:0;cursor:pointer"
+         onclick="salvarFerramenta('${f.slug}','ativa',${!f.ativa})">${f.ativa?'Sim':'Não'}</button></td>
+    <td><button class="mini" onclick="removerFerramenta('${f.slug}','${escapar(f.nome)}')">Remover</button></td>
+  </tr>`).join('') || '<tr><td colspan="5" class="carregando">Nenhuma ferramenta cadastrada.</td></tr>';
+
+  const mapa = {};
+  acs.forEach(a => { mapa[a.nivel + '|' + a.ferramenta] = a.permissao; });
+  const seletor = (slug, nivel) => {
+    const atual = mapa[nivel + '|' + slug] || '';
+    return `<select onchange="salvarAcesso('${slug}','${nivel}',this.value)">
+      <option value=""       ${atual===''?'selected':''}>Sem acesso</option>
+      <option value="ver"    ${atual==='ver'?'selected':''}>Ver</option>
+      <option value="editar" ${atual==='editar'?'selected':''}>Editar</option>
+    </select>`;
+  };
+  tbA.innerHTML = fs.map(f => `<tr>
+    <td><strong>${escapar(f.nome)}</strong></td>
+    <td>${seletor(f.slug,'usuario')}</td>
+    <td>${seletor(f.slug,'consulta')}</td>
+  </tr>`).join('') || '<tr><td colspan="3" class="carregando">Nenhuma ferramenta cadastrada.</td></tr>';
+}
+
+async function salvarFerramenta(slug, campo, valor){
+  const { error } = await sb.from('app_ferramentas').update({[campo]:valor}).eq('slug', slug);
+  if(error) alert('Não foi possível salvar: ' + error.message);
+  carregarFerramentas();
+}
+
+async function novaFerramenta(){
+  const nome = prompt('Nome da ferramenta:'); if(!nome) return;
+  const slug = (prompt('Chave interna (sem espaços, ex.: pedidos):','') || '')
+    .toLowerCase().replace(/[^a-z0-9_]/g,'');
+  if(!slug) return;
+  const url = prompt('URL completa da página:','https://') || '#';
+  const { error } = await sb.from('app_ferramentas').insert({
+    slug, nome, url, icone: nome.slice(0,2).toUpperCase(), ordem: 99
+  });
+  if(error) alert('Não foi possível criar: ' + error.message);
+  carregarFerramentas();
+}
+
+async function removerFerramenta(slug, nome){
+  if(!confirm('Remover "' + nome + '" do catálogo? Os acessos ligados a ela também saem.')) return;
+  const { error } = await sb.from('app_ferramentas').delete().eq('slug', slug);
+  if(error) alert('Não foi possível remover: ' + error.message);
+  carregarFerramentas();
+}
+
+async function salvarAcesso(slug, nivel, permissao){
+  let error;
+  if(!permissao){
+    ({ error } = await sb.from('app_acessos').delete()
+      .eq('ferramenta', slug).eq('nivel', nivel).is('user_id', null));
+  } else {
+    const { data:existe } = await sb.from('app_acessos').select('id')
+      .eq('ferramenta', slug).eq('nivel', nivel).is('user_id', null).maybeSingle();
+    ({ error } = existe
+      ? await sb.from('app_acessos').update({ permissao }).eq('id', existe.id)
+      : await sb.from('app_acessos').insert({ ferramenta:slug, nivel, permissao }));
+  }
+  if(error) alert('Não foi possível salvar: ' + error.message);
+  carregarFerramentas();
+}
+</script>
+</body>
+</html>
