@@ -121,9 +121,27 @@ td select{max-width:150px}
       <div class="marca-txt"><strong>Central de Acesso</strong><span>Fiorella &middot; Wendell</span></div>
     </div>
 
-    <div id="bloco-entrar">
-      <h1>Entrar</h1>
-      <p class="sub">Use o e-mail cadastrado para acessar as ferramentas.</p>
+    <!-- TELA PADRÃO: senha única de acesso -->
+    <div id="bloco-senha">
+      <h1>Acesso</h1>
+      <p class="sub">Digite a senha para abrir as ferramentas.</p>
+      <div id="aviso-senha" class="aviso"></div>
+      <form id="form-senha">
+        <div class="campo"><label for="s-senha">Senha</label>
+          <input id="s-senha" type="password" autocomplete="current-password"
+                 autofocus required></div>
+        <button class="btn" type="submit" id="btn-senha">Entrar</button>
+      </form>
+      <div class="rodape-login" style="justify-content:center">
+        <button class="link" type="button" style="color:var(--tinta-3);font-weight:400"
+                onclick="mostrarBloco('entrar')">Acesso administrativo</button>
+      </div>
+    </div>
+
+    <!-- TELA DE ADMINISTRADOR: conta nominal -->
+    <div id="bloco-entrar" class="oculto">
+      <h1>Acesso administrativo</h1>
+      <p class="sub">Entre com a sua conta nominal para administrar a Central.</p>
       <div id="aviso-login" class="aviso"></div>
       <form id="form-entrar">
         <div class="campo"><label for="e-email">E-mail</label>
@@ -135,6 +153,10 @@ td select{max-width:150px}
       <div class="rodape-login">
         <button class="link" type="button" onclick="mostrarBloco('criar')">Criar conta</button>
         <button class="link" type="button" onclick="mostrarBloco('recuperar')">Esqueci a senha</button>
+      </div>
+      <div style="text-align:center;margin-top:12px">
+        <button class="link" type="button" style="color:var(--tinta-3);font-weight:400"
+                onclick="mostrarBloco('senha')">&larr; Voltar para o acesso normal</button>
       </div>
     </div>
 
@@ -261,6 +283,10 @@ td select{max-width:150px}
 const SUPABASE_URL  = 'https://eepmlsdbtcvsjxdcvimi.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_048Dv-jRALn34Ythhj9ngA_fZ1gsNI_';
 
+// Conta única usada pela senha compartilhada. O e-mail não é segredo —
+// a senha é conferida pelo Supabase, no servidor, e nunca fica neste arquivo.
+const CONTA_COMPARTILHADA = 'acesso@wendell.com';
+
 // storageKey padrão de propósito: assim qualquer outro HTML do mesmo
 // domínio que crie um client deste projeto já enxerga a mesma sessão.
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -292,10 +318,13 @@ function traduzErro(msg){
   return msg || 'Não foi possível concluir. Tente de novo.';
 }
 function mostrarBloco(qual){
-  ['entrar','criar','recuperar','nova-senha','pendente']
+  ['senha','entrar','criar','recuperar','nova-senha','pendente']
     .forEach(b => $('bloco-'+b).classList.toggle('oculto', b !== qual));
   $('tela-login').classList.remove('oculto');
   $('tela-app').classList.add('oculto');
+  const campo = { senha:'s-senha', entrar:'e-email', criar:'c-nome',
+                  recuperar:'r-email', 'nova-senha':'n-senha' }[qual];
+  if(campo) setTimeout(() => $(campo).focus(), 40);
 }
 function proximoDestino(){
   const p = new URLSearchParams(location.search).get('next');
@@ -316,7 +345,7 @@ function proximoDestino(){
     return;
   }
   const { data:{ session } } = await sb.auth.getSession();
-  session ? await entrarNoApp() : mostrarBloco('entrar');
+  session ? await entrarNoApp() : mostrarBloco('senha');
 })();
 
 async function entrarNoApp(){
@@ -325,8 +354,8 @@ async function entrarNoApp(){
   const { data, error } = await sb.rpc('app_perfil');
   if(error || !data || !data.length){
     await sb.auth.signOut();
-    mostrarBloco('entrar');
-    avisar('login','Não foi possível carregar seu perfil. Entre novamente.');
+    mostrarBloco('senha');
+    avisar('senha','Não foi possível carregar o perfil. Entre novamente.');
     return;
   }
   PERFIL = data[0];
@@ -356,6 +385,25 @@ async function sair(){
 /* ============================================================
    AUTENTICAÇÃO
    ============================================================ */
+// Senha única: o e-mail é preenchido pela página, a senha vai para o
+// Supabase e é conferida lá. Errar a senha aqui não vaza nada.
+$('form-senha').addEventListener('submit', async e => {
+  e.preventDefault(); limparAviso('senha');
+  const b = $('btn-senha'); b.disabled = true; b.textContent = 'Entrando…';
+  const { error } = await sb.auth.signInWithPassword({
+    email: CONTA_COMPARTILHADA, password: $('s-senha').value
+  });
+  b.disabled = false; b.textContent = 'Entrar';
+  if(error){
+    const m = (error.message||'').toLowerCase();
+    avisar('senha', m.includes('rate limit') || m.includes('too many')
+      ? 'Muitas tentativas. Aguarde um minuto.' : 'Senha incorreta.');
+    $('s-senha').select();
+    return;
+  }
+  await entrarNoApp();
+});
+
 $('form-entrar').addEventListener('submit', async e => {
   e.preventDefault(); limparAviso('login');
   const b = $('btn-entrar'); b.disabled = true; b.textContent = 'Entrando…';
