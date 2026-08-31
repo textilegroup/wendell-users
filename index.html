@@ -208,32 +208,11 @@ tbody tr:hover td{background:var(--sunk)}
 .pills.no-header button{color:rgba(255,255,255,.72);font-size:11px;padding:4px 10px}
 .pills.no-header button[aria-pressed="true"]{background:#fff;color:var(--wine-deep)}
 
-/* ---------- PORTAL ---------- */
-.ferramentas{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
-.ferramenta{
-  background:var(--card);border:1px solid var(--line);border-radius:10px;
-  box-shadow:var(--shadow);padding:11px 12px 12px;text-decoration:none;color:inherit;
-  display:flex;flex-direction:column;gap:3px;transition:border-color .12s,transform .12s;
-}
-.ferramenta:hover{border-color:var(--wine-soft);transform:translateY(-1px)}
-.ferramenta:focus-visible{outline:2px solid var(--wine-soft);outline-offset:2px}
-.ferramenta[data-inativa="1"]{opacity:.5;pointer-events:none}
-.ferramenta-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
-.ferramenta-tag{
-  width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
-  color:#fff;font:700 11px "Archivo Narrow",Archivo,sans-serif;letter-spacing:.04em;
-}
-.selo{
-  font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--ink-3);background:var(--chip);border:1px solid var(--line);
-  border-radius:5px;padding:2px 6px;white-space:nowrap;
-}
-.ferramenta h3{margin:0;font-size:13.5px;font-weight:600;line-height:1.2}
-.ferramenta p{margin:0;font-size:11px;color:var(--ink-2);line-height:1.35}
-.vazio{
-  padding:34px 18px;text-align:center;color:var(--ink-2);font-size:12.5px;
-  background:var(--card);border:1px dashed var(--line);border-radius:10px;
-  grid-column:1/-1;
+/* ---------- CONFIRMAÇÃO ---------- */
+.marca-ok{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  display:grid;place-items:center;font-size:14px;font-weight:700;
+  color:var(--pos);border:1.5px solid var(--pos);
 }
 
 /* ---------- GESTÃO ---------- */
@@ -313,10 +292,6 @@ td.acao{text-align:right}
       <p>Wendell Global Interlining</p>
     </div>
     <div class="app-actions">
-      <div class="pills no-header oculto" id="abas">
-        <button data-aba="portal" aria-pressed="true">Ferramentas</button>
-        <button data-aba="gestao" aria-pressed="false">Gerenciar</button>
-      </div>
       <span class="modo-chip oculto" id="modo-chip">Gestão</span>
       <button class="header-chip" onclick="sair()">Sair</button>
     </div>
@@ -324,15 +299,19 @@ td.acao{text-align:right}
 
   <main>
 
-    <!-- PORTAL -->
-    <section id="pg-portal">
+    <!-- CONFIRMAÇÃO DE ACESSO -->
+    <section id="pg-status">
       <div class="card">
-        <div class="card-hd">
-          <h2>Ferramentas</h2>
-          <span class="sub" id="sub-portal"></span>
-        </div>
-        <div class="card-bd">
-          <div class="ferramentas" id="grade-ferramentas"></div>
+        <div class="card-hd"><h2>Acesso liberado</h2><span class="sub" id="sub-status"></span></div>
+        <div class="card-bd" style="display:flex;gap:12px;align-items:flex-start">
+          <span class="marca-ok">✓</span>
+          <div>
+            <p style="margin:0 0 4px;font-size:13.5px;font-weight:600">Sua sessão está ativa.</p>
+            <p style="margin:0;font-size:12px;color:var(--ink-2);max-width:62ch">
+              Abra a ferramenta que você precisa — ela reconhece este acesso sozinha, sem pedir
+              a senha de novo. Se você chegou aqui por um link de ferramenta, o retorno é automático.
+            </p>
+          </div>
         </div>
       </div>
     </section>
@@ -341,17 +320,18 @@ td.acao{text-align:right}
     <section id="pg-gestao" class="oculto">
       <div class="card">
         <div class="card-hd">
-          <h2>Ferramentas do portal</h2>
-          <span class="sub">Cole aqui a URL de cada HTML</span>
+          <h2>Ferramentas autorizadas</h2>
+          <span class="sub">Chaves que o guard reconhece</span>
           <button class="mini forte" style="margin-left:10px" onclick="novaFerramenta()">Adicionar</button>
         </div>
         <div class="card-bd" style="padding-bottom:0">
           <p class="dica">
-            A <b>chave</b> é o que liga a página ao portal. Depois de cadastrar, coloque esta linha
-            no <code>&lt;head&gt;</code> do HTML:
+            A <b>chave</b> é o que autoriza a página. Cadastre-a aqui e coloque esta linha no
+            <code>&lt;head&gt;</code> do HTML:
             <code>&lt;script src="guard.js" data-app="CHAVE"&gt;&lt;/script&gt;</code> —
             com o endereço completo do <code>guard.js</code>.
-            <b>Acesso comum</b> desligado deixa a ferramenta visível só para quem entra com a senha de gestão.
+            <b>Acesso comum</b> desligado restringe a ferramenta a quem entra com a senha de gestão.
+            A <b>URL</b> não afeta o funcionamento: serve para você lembrar onde cada página mora.
           </p>
         </div>
         <div class="table-scroll">
@@ -411,7 +391,6 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
 });
 
-const SERIES = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)'];
 let EH_GESTAO = false;
 
 /* ---------- utilidades ---------- */
@@ -465,11 +444,12 @@ async function entrarNoApp(){
 
   $('tela-login').classList.add('oculto');
   $('tela-app').classList.remove('oculto');
+  $('sub-status').textContent = EH_GESTAO ? 'Senha de gestão' : 'Senha de acesso';
   if(EH_GESTAO){
-    $('abas').classList.remove('oculto');
     $('modo-chip').classList.remove('oculto');
+    $('pg-gestao').classList.remove('oculto');
+    carregarGestao();
   }
-  carregarPortal();
 }
 
 async function sair(){
@@ -502,50 +482,7 @@ $('form-senha').addEventListener('submit', async e => {
   await entrarNoApp();
 });
 
-/* ============================================================
-   ABAS
-   ============================================================ */
-$('abas').addEventListener('click', e => {
-  const b = e.target.closest('button'); if(!b) return;
-  $('abas').querySelectorAll('button')
-    .forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-  $('pg-portal').classList.toggle('oculto', b.dataset.aba !== 'portal');
-  $('pg-gestao').classList.toggle('oculto', b.dataset.aba !== 'gestao');
-  if(b.dataset.aba === 'gestao') carregarGestao();
-});
 
-/* ============================================================
-   PORTAL
-   ============================================================ */
-async function carregarPortal(){
-  const { data, error } = await sb.rpc('app_meu_portal');
-  const grade = $('grade-ferramentas');
-  if(error){
-    grade.innerHTML = '<div class="vazio">Não foi possível carregar as ferramentas.</div>';
-    return;
-  }
-  if(!data.length){
-    grade.innerHTML = '<div class="vazio">Nenhuma ferramenta cadastrada ainda.' +
-      (EH_GESTAO ? ' Use a aba Gerenciar para adicionar.' : '') + '</div>';
-    $('sub-portal').textContent = '';
-    return;
-  }
-  grade.innerHTML = data.map((f, i) => {
-    const semUrl = !f.url || f.url === '#';
-    return '<a class="ferramenta" data-inativa="' + (semUrl ? 1 : 0) + '"' +
-      ' href="' + (semUrl ? '#' : escapar(f.url)) + '"' +
-      (semUrl ? '' : ' target="_blank" rel="noopener"') + '>' +
-      '<div class="ferramenta-hd">' +
-        '<span class="ferramenta-tag" style="background:' + SERIES[i % SERIES.length] + '">' +
-          escapar(f.icone) + '</span>' +
-        (semUrl ? '<span class="selo">sem URL</span>' : '') +
-      '</div>' +
-      '<h3>' + escapar(f.nome) + '</h3>' +
-      '<p>' + escapar(f.descricao || '') + '</p></a>';
-  }).join('');
-  $('sub-portal').textContent = data.length +
-    (data.length === 1 ? ' ferramenta' : ' ferramentas');
-}
 
 /* ============================================================
    GESTÃO DO CATÁLOGO
