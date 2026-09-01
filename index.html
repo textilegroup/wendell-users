@@ -259,10 +259,10 @@ td.acao{text-align:right}
 <div id="tela-login" class="oculto">
   <div class="login-card">
     <div class="login-hd">
-      <div class="app-logo">WGI</div>
+      <div class="app-logo">CA</div>
       <div>
         <h1>Central de Acesso</h1>
-        <p>Wendell Global Interlining</p>
+        <p>Wendell &middot; Fiorella</p>
       </div>
     </div>
     <div class="login-bd">
@@ -286,10 +286,10 @@ td.acao{text-align:right}
 <div id="tela-app" class="oculto">
 
   <header class="app-header">
-    <div class="app-logo">WGI</div>
+    <div class="app-logo" id="org-sigla">CA</div>
     <div class="app-brand">
       <h1>Central de Acesso</h1>
-      <p>Wendell Global Interlining</p>
+      <p id="org-nome">—</p>
     </div>
     <div class="app-actions">
       <span class="modo-chip oculto" id="modo-chip">Gestão</span>
@@ -318,6 +318,34 @@ td.acao{text-align:right}
 
     <!-- GESTÃO -->
     <section id="pg-gestao" class="oculto">
+
+      <!-- área 1: senhas -->
+      <div class="card">
+        <div class="card-hd">
+          <h2>Senhas</h2>
+          <span class="sub" id="sub-senhas">Válidas apenas para esta organização</span>
+        </div>
+        <div class="card-bd" style="padding-bottom:0">
+          <p class="dica">
+            A troca acontece no servidor do Supabase — a senha nunca passa por nenhum arquivo
+            público. Mínimo de 8 caracteres. Quem já estiver logado com a senha antiga continua
+            dentro até sair ou a sessão expirar.
+          </p>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th class="text">Senha</th>
+              <th class="text">Abre</th>
+              <th class="text">Conta</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="tb-senhas"><tr><td colspan="4" class="estado">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- área 2: ferramentas -->
       <div class="card">
         <div class="card-hd">
           <h2>Ferramentas autorizadas</h2>
@@ -360,14 +388,23 @@ td.acao{text-align:right}
 const SUPABASE_URL  = 'https://eepmlsdbtcvsjxdcvimi.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_048Dv-jRALn34Ythhj9ngA_fZ1gsNI_';
 
-// Duas contas compartilhadas, um campo de senha só.
-// A página tenta a conta comum e, se a senha não for a dela, tenta a de
-// gestão. Os e-mails não são segredo — as senhas ficam no servidor do
-// Supabase e nunca aparecem neste arquivo.
+// Quatro contas compartilhadas, um campo de senha só: acesso e gestão
+// para cada organização. A página tenta uma a uma até acertar — os
+// e-mails não são segredo, as senhas ficam no servidor do Supabase e
+// nunca aparecem neste arquivo.
 const CONTAS = [
-  { email:'acesso@wendell.com', modo:'comum'  },
-  { email:'gestao@wendell.com', modo:'gestao' }
+  { email:'acesso@wendell.com',  org:'wendell'  },
+  { email:'gestao@wendell.com',  org:'wendell'  },
+  { email:'acesso@fiorella.com', org:'fiorella' },
+  { email:'gestao@fiorella.com', org:'fiorella' }
 ];
+
+const ORGS = {
+  wendell:  { sigla:'WGI', nome:'Wendell Global Interlining' },
+  fiorella: { sigla:'FIO', nome:'Fiorella Brasil' }
+};
+
+const ROTULO_CONTA = { usuario:'Acesso', admin:'Gestão' };
 
 // Se o CDN não responder, a página não pode ficar em branco sem explicação.
 if (typeof supabase === 'undefined' || !supabase.createClient) {
@@ -391,7 +428,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
 });
 
-let EH_GESTAO = false;
+let EH_GESTAO = false, ORG = null;
 
 /* ---------- utilidades ---------- */
 const $ = id => document.getElementById(id);
@@ -436,18 +473,25 @@ async function entrarNoApp(){
     return;
   }
   EH_GESTAO = data[0].nivel === 'admin';
+  ORG = data[0].organizacao;
 
   const destino = proximoDestino();
   if(destino){ location.replace(destino); return; }
 
   sb.rpc('app_marcar_acesso');
 
+  const marca = ORGS[ORG] || { sigla:'CA', nome:'—' };
+  $('org-sigla').textContent = marca.sigla;
+  $('org-nome').textContent  = marca.nome;
+
   $('tela-login').classList.add('oculto');
   $('tela-app').classList.remove('oculto');
-  $('sub-status').textContent = EH_GESTAO ? 'Senha de gestão' : 'Senha de acesso';
+  $('sub-status').textContent =
+    (EH_GESTAO ? 'Senha de gestão' : 'Senha de acesso') + ' · ' + marca.nome;
   if(EH_GESTAO){
     $('modo-chip').classList.remove('oculto');
     $('pg-gestao').classList.remove('oculto');
+    $('sub-senhas').textContent = 'Válidas somente para ' + marca.nome;
     carregarGestao();
   }
 }
@@ -458,17 +502,32 @@ async function sair(){
 }
 
 /* ============================================================
-   LOGIN — um campo, duas senhas possíveis
+   LOGIN — um campo, quatro senhas possíveis
    ============================================================ */
+const CHAVE_ULTIMA = 'ca-ultima-conta';
+
+// Tenta primeiro a conta usada por último neste navegador: quem sempre
+// usa a mesma senha acerta na primeira tentativa, em vez de na quarta.
+function ordemDeTentativa(){
+  let ultima = null;
+  try{ ultima = localStorage.getItem(CHAVE_ULTIMA); }catch(e){}
+  const preferida = CONTAS.filter(c => c.email === ultima);
+  return preferida.concat(CONTAS.filter(c => c.email !== ultima));
+}
+
 $('form-senha').addEventListener('submit', async e => {
   e.preventDefault(); limparAviso();
   const b = $('btn-senha'); b.disabled = true; b.textContent = 'Entrando…';
   const senha = $('s-senha').value;
 
   let ok = false, limite = false;
-  for(const conta of CONTAS){
+  for(const conta of ordemDeTentativa()){
     const { error } = await sb.auth.signInWithPassword({ email: conta.email, password: senha });
-    if(!error){ ok = true; break; }
+    if(!error){
+      ok = true;
+      try{ localStorage.setItem(CHAVE_ULTIMA, conta.email); }catch(e){}
+      break;
+    }
     const m = (error.message || '').toLowerCase();
     if(m.includes('rate limit') || m.includes('too many')){ limite = true; break; }
   }
@@ -482,12 +541,102 @@ $('form-senha').addEventListener('submit', async e => {
   await entrarNoApp();
 });
 
+/* ============================================================
+   GESTÃO — SENHAS
+   ============================================================ */
+async function carregarSenhas(){
+  const { data, error } = await sb.rpc('app_contas');
+  const tb = $('tb-senhas');
+  if(error || !data){
+    tb.innerHTML = '<tr><td colspan="4" class="estado">Não foi possível carregar.</td></tr>';
+    return;
+  }
+  tb.innerHTML = data.map(c =>
+    '<tr data-email="' + escapar(c.email) + '">' +
+      '<td class="text"><b>' + (ROTULO_CONTA[c.nivel] || c.nivel) + '</b></td>' +
+      '<td class="text" style="color:var(--ink-2)">' + (c.nivel === 'admin'
+        ? 'Autorização e esta área de gestão'
+        : 'Apenas as ferramentas liberadas') + '</td>' +
+      '<td class="text" style="color:var(--ink-3)">' + escapar(c.email) + '</td>' +
+      '<td class="acao"><button class="mini" ' +
+        'onclick="abrirTrocaSenha(this,\'' + escapar(c.email) + '\')">Alterar senha</button></td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="4" class="estado">Nenhuma conta.</td></tr>';
+}
+
+function abrirTrocaSenha(botao, email){
+  const linha = botao.closest('tr');
+  if(linha.nextElementSibling && linha.nextElementSibling.dataset.form === '1'){
+    linha.nextElementSibling.remove();
+    return;
+  }
+  document.querySelectorAll('#tb-senhas tr[data-form="1"]').forEach(r => r.remove());
+
+  const nova = document.createElement('tr');
+  nova.dataset.form = '1';
+  nova.innerHTML =
+    '<td colspan="4" style="background:var(--sunk)">' +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0">' +
+        '<input type="password" placeholder="Nova senha" autocomplete="new-password" ' +
+          'style="max-width:190px" data-campo="s1">' +
+        '<input type="password" placeholder="Repita a senha" autocomplete="new-password" ' +
+          'style="max-width:190px" data-campo="s2">' +
+        '<button class="mini forte" data-acao="salvar">Salvar</button>' +
+        '<button class="mini" data-acao="cancelar">Cancelar</button>' +
+        '<span style="font-size:11.5px;color:var(--ink-3)">mínimo 8 caracteres</span>' +
+      '</div>' +
+    '</td>';
+  linha.after(nova);
+
+  const s1 = nova.querySelector('[data-campo="s1"]');
+  const s2 = nova.querySelector('[data-campo="s2"]');
+  nova.querySelector('[data-acao="cancelar"]').onclick = () => nova.remove();
+  nova.querySelector('[data-acao="salvar"]').onclick = async (ev) => {
+    if(s1.value !== s2.value){ toast('As duas senhas não conferem.'); s2.focus(); return; }
+    if(s1.value.length < 8){ toast('A senha precisa ter pelo menos 8 caracteres.'); s1.focus(); return; }
+    const btn = ev.target; btn.disabled = true; btn.textContent = 'Salvando…';
+    const erro = await trocarSenha(email, s1.value);
+    btn.disabled = false; btn.textContent = 'Salvar';
+    if(erro){ toast(erro); return; }
+    nova.remove();
+    toast('Senha alterada. Avise quem usa esta senha.');
+  };
+  s1.focus();
+}
+
+// A troca roda na Edge Function: é lá que mora a chave capaz de alterar
+// senhas, e é lá que se confere se quem pediu tem direito.
+async function trocarSenha(email, senha){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return 'Sessão expirada. Entre novamente.';
+  try{
+    const r = await fetch(SUPABASE_URL + '/functions/v1/alterar-senha', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'apikey': SUPABASE_ANON,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, senha })
+    });
+    const corpo = await r.json().catch(() => ({}));
+    return r.ok ? null : (corpo.erro || 'Não foi possível alterar a senha.');
+  }catch(e){
+    return 'Falha de conexão ao alterar a senha.';
+  }
+}
+
 
 
 /* ============================================================
    GESTÃO DO CATÁLOGO
    ============================================================ */
 async function carregarGestao(){
+  carregarSenhas();
+  return carregarFerramentas();
+}
+
+async function carregarFerramentas(){
   const [{ data:fs, error:e1 }, { data:acs, error:e2 }] = await Promise.all([
     sb.from('app_ferramentas').select('*').order('ordem'),
     sb.from('app_acessos').select('*').eq('nivel','usuario').is('user_id', null)
@@ -521,7 +670,7 @@ async function carregarGestao(){
 async function salvarFerramenta(slug, campo, valor){
   const { error } = await sb.from('app_ferramentas').update({[campo]:valor}).eq('slug', slug);
   toast(error ? 'Não foi possível salvar: ' + error.message : 'Salvo.');
-  carregarGestao();
+  carregarFerramentas();
 }
 
 async function novaFerramenta(){
@@ -536,14 +685,14 @@ async function novaFerramenta(){
   if(error){ toast('Não foi possível criar: ' + error.message); return; }
   await sb.from('app_acessos').insert({ nivel:'usuario', ferramenta:slug, permissao:'editar' });
   toast('Ferramenta "' + nome + '" cadastrada com a chave ' + slug + '.');
-  carregarGestao();
+  carregarFerramentas();
 }
 
 async function removerFerramenta(slug){
   if(!confirm('Remover "' + slug + '" do portal?')) return;
   const { error } = await sb.from('app_ferramentas').delete().eq('slug', slug);
   toast(error ? 'Não foi possível remover: ' + error.message : 'Removida.');
-  carregarGestao();
+  carregarFerramentas();
 }
 
 async function alternarAcesso(slug, liberar){
@@ -552,7 +701,7 @@ async function alternarAcesso(slug, liberar){
     : await sb.from('app_acessos').delete()
         .eq('nivel','usuario').eq('ferramenta', slug).is('user_id', null);
   if(error) toast('Não foi possível salvar: ' + error.message);
-  carregarGestao();
+  carregarFerramentas();
 }
 
 /* toast inferior — o design system proíbe alert() como padrão de UX */
