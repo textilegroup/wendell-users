@@ -621,6 +621,8 @@ pt: {
   'acessos.semacesso':'sem acesso',
   'acessos.alcanca':'alcança: {p}',
   'acessos.adminabre':'Admin abre todas as ferramentas',
+  'acessos.adminaviso':'Esta pessoa é <b>Admin</b>: ela já abre todas as ferramentas. Exceção por ferramenta não tem efeito enquanto o nível for Admin — por isso os campos abaixo estão travados. Para liberar ferramenta a ferramenta, baixe o nível para Gestão ou Externo.',
+  'acessos.salvando':'salvando…',
   'acessos.semferr':'Nenhuma ferramenta cadastrada.',
   'acessos.atualizado':'Acesso atualizado.',
 
@@ -769,6 +771,8 @@ en: {
   'acessos.semacesso':'no access',
   'acessos.alcanca':'reaches: {p}',
   'acessos.adminabre':'Admin opens every tool',
+  'acessos.adminaviso':'This person is an <b>Admin</b>: they already open every tool. A per-tool exception has no effect while the level is Admin — that is why the fields below are locked. To release tool by tool, lower the level to Manager or External.',
+  'acessos.salvando':'saving…',
   'acessos.semferr':'No tools registered.',
   'acessos.atualizado':'Access updated.',
 
@@ -1188,7 +1192,7 @@ async function carregarPessoas(){
   tb.innerHTML = pessoas.map(u => {
     const eu = EU && u.email === EU.email;
     const excecoes = (u.acessos || []).length;
-    return '<tr>' +
+    return '<tr data-uid="' + u.user_id + '">' +
       '<td class="text"><input type="text" value="' + escapar(u.nome) + '" style="max-width:150px"' +
         ' onchange="salvarPessoa(\'' + u.user_id + '\',{nome:this.value})"></td>' +
       '<td class="text" style="color:var(--ink-2)">' + escapar(u.email) +
@@ -1246,8 +1250,10 @@ async function redefinirAcessos(user_id){
   if(!(u.acessos || []).length){ toast(t('pessoas.semexcecao')); return; }
   if(!confirm(t('pessoas.redefinir.conf', { nome: u.nome || u.email }))) return;
   const d = await chamarUsuarios({ acao:'redefinir_acessos', user_id });
-  toast(d.erro ? d.erro : t('pessoas.redefinido'));
-  carregarPessoas();
+  if(d.erro){ toast(d.erro); return; }
+  u.acessos = [];
+  repintarAcessos(u);
+  toast(t('pessoas.redefinido'));
 }
 
 function fecharLinhasExtras(){
@@ -1263,6 +1269,41 @@ function permissaoEfetiva(u, slug){
   return (PADROES[u.nivel] || {})[slug] || null;
 }
 
+function montarPainelAcessos(u){
+  const eAdmin = u.nivel === 'admin';
+  const celulas = FERRAMENTAS_ORG.map(f => {
+    const exc = (u.acessos || []).find(a => a.ferramenta === f.slug);
+    const efet = permissaoEfetiva(u, f.slug);
+    const padrao = (PADROES[u.nivel] || {})[f.slug] || null;
+    return '<div style="display:flex;flex-direction:column;gap:3px;min-width:150px">' +
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;' +
+      'color:var(--ink-3)">' + escapar(f.nome) + '</span>' +
+      '<select data-ferr="' + f.slug + '"' +
+        ' onchange="salvarAcessoPessoa(\'' + u.user_id + '\',\'' + f.slug + '\',this.value,this)"' +
+        (eAdmin ? ' disabled title="' + t('acessos.adminabre') + '"' : '') + '>' +
+        '<option value=""' + (exc?'':' selected') + '>' + t('acessos.padrao') +
+          ' (' + (padrao ? escapar(rotuloPerm(padrao)) : t('acessos.semacesso')) + ')</option>' +
+        PERMISSOES.map(pp =>
+          '<option value="' + pp + '"' + (exc && exc.permissao===pp?' selected':'') + '>' +
+          escapar(rotuloPerm(pp)) + '</option>').join('') +
+      '</select>' +
+      '<span class="efeito" style="font-size:10.5px;color:' +
+        (efet ? 'var(--pos)' : 'var(--ink-3)') + '">' +
+        (efet ? t('acessos.alcanca', { p: rotuloPerm(efet) }) : t('acessos.semacesso')) + '</span>' +
+    '</div>';
+  }).join('');
+
+  // Campo travado com explicação só no title é campo que parece quebrado.
+  const aviso = eAdmin
+    ? '<div class="dica" style="margin:6px 0 2px">' + t('acessos.adminaviso') + '</div>'
+    : '';
+
+  return '<td colspan="7" style="background:var(--sunk)">' + aviso +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:6px 0">' +
+    (celulas || '<span style="font-size:12px;color:var(--ink-3)">' + t('acessos.semferr') + '</span>') +
+    '</div></td>';
+}
+
 function abrirAcessos(botao, user_id){
   const linha = botao.closest('tr');
   const aberta = linha.nextElementSibling && linha.nextElementSibling.dataset.extra === '1';
@@ -1274,38 +1315,70 @@ function abrirAcessos(botao, user_id){
 
   const nova = document.createElement('tr');
   nova.dataset.extra = '1';
-  const celulas = FERRAMENTAS_ORG.map(f => {
-    const exc = (u.acessos || []).find(a => a.ferramenta === f.slug);
-    const efet = permissaoEfetiva(u, f.slug);
-    const padrao = (PADROES[u.nivel] || {})[f.slug] || null;
-    return '<div style="display:flex;flex-direction:column;gap:3px;min-width:150px">' +
-      '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;' +
-      'color:var(--ink-3)">' + escapar(f.nome) + '</span>' +
-      '<select onchange="salvarAcessoPessoa(\'' + user_id + '\',\'' + f.slug + '\',this.value)"' +
-        (u.nivel === 'admin' ? ' disabled title="' + t('acessos.adminabre') + '"' : '') + '>' +
-        '<option value=""' + (exc?'':' selected') + '>' + t('acessos.padrao') +
-          ' (' + (padrao ? escapar(rotuloPerm(padrao)) : t('acessos.semacesso')) + ')</option>' +
-        PERMISSOES.map(pp =>
-          '<option value="' + pp + '"' + (exc && exc.permissao===pp?' selected':'') + '>' +
-          escapar(rotuloPerm(pp)) + '</option>').join('') +
-      '</select>' +
-      '<span style="font-size:10.5px;color:' + (efet ? 'var(--pos)' : 'var(--ink-3)') + '">' +
-        (efet ? t('acessos.alcanca', { p: rotuloPerm(efet) }) : t('acessos.semacesso')) + '</span>' +
-    '</div>';
-  }).join('');
-
-  nova.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
-    '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:6px 0">' +
-    (celulas || '<span style="font-size:12px;color:var(--ink-3)">' + t('acessos.semferr') + '</span>') +
-    '</div></td>';
+  nova.dataset.uid = user_id;
+  nova.innerHTML = montarPainelAcessos(u);
   linha.after(nova);
 }
 
-async function salvarAcessoPessoa(user_id, ferramenta, permissao){
+// Atualiza só o que mudou — nada de recarregar a tabela (era isso que
+// fechava o painel no meio da troca) e nada de redesenhar o painel inteiro
+// a cada campo: redesenhar troca o <select> por outro, e quem mexesse em
+// dois campos seguidos veria o segundo sumir debaixo do cursor.
+// Com 'ferramenta' mexe só naquele campo; sem ela (redefinir) refaz tudo.
+function repintarAcessos(u, ferramenta){
+  const painel = document.querySelector('#tb-pessoas tr[data-extra="1"][data-uid="' + u.user_id + '"]');
+  if(painel && ferramenta){
+    const sel = painel.querySelector('select[data-ferr="' + ferramenta + '"]');
+    const span = sel && sel.parentElement.querySelector('.efeito');
+    if(span){
+      const efet = permissaoEfetiva(u, ferramenta);
+      span.textContent = efet ? t('acessos.alcanca', { p: rotuloPerm(efet) }) : t('acessos.semacesso');
+      span.style.color = efet ? 'var(--pos)' : 'var(--ink-3)';
+    }
+  }else if(painel){
+    painel.innerHTML = montarPainelAcessos(u);
+  }
+
+  const linha = document.querySelector('#tb-pessoas tr[data-uid="' + u.user_id + '"]:not([data-extra])');
+  const cel = linha && linha.querySelector('.nivel-cel');
+  if(!cel) return;
+  let selo = cel.querySelector('.selo.alerta');
+  if((u.acessos || []).length){
+    if(!selo){
+      selo = document.createElement('span');
+      selo.className = 'selo alerta';
+      cel.appendChild(selo);
+    }
+    selo.textContent = t('pessoas.personalizado');
+    selo.title = t('pessoas.personalizado.t');
+  }else if(selo){
+    selo.remove();
+  }
+}
+
+async function salvarAcessoPessoa(user_id, ferramenta, permissao, sel){
+  const u = PESSOAS_CACHE.find(x => x.user_id === user_id);
+  const antes = ((u && u.acessos) || []).find(a => a.ferramenta === ferramenta);
+
+  if(sel) sel.disabled = true;
   const d = await chamarUsuarios({ acao:'acesso', user_id, ferramenta,
                                    permissao: permissao || null });
-  toast(d.erro ? d.erro : t('acessos.atualizado'));
-  await carregarPessoas();
+  if(sel) sel.disabled = false;
+
+  if(d.erro){
+    if(sel) sel.value = antes ? antes.permissao : '';   // devolve o que estava
+    toast(d.erro);
+    return;
+  }
+
+  // Espelha no cache o que o servidor acabou de gravar. É a mesma coisa que
+  // uma recarga traria de volta, sem o efeito colateral de apagar o painel.
+  if(u){
+    u.acessos = (u.acessos || []).filter(a => a.ferramenta !== ferramenta);
+    if(permissao) u.acessos.push({ ferramenta, permissao });
+    repintarAcessos(u, ferramenta);
+  }
+  toast(t('acessos.atualizado'));
 }
 
 // Reset: o sistema sorteia outra senha provisória e mostra uma vez.
