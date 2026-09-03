@@ -290,8 +290,9 @@ td.acao{text-align:right}
           </div>
           <button class="btn" type="submit" id="btn-pessoa">Entrar</button>
         </form>
-        <div class="login-fd centro">
-          <button class="link discreto" type="button" onclick="mostrarLogin('equipe')">Entrar com senha da equipe</button>
+        <div class="login-fd">
+          <span style="font-size:11.5px;color:var(--ink-3)">Esqueceu a senha? Peça à gestão.</span>
+          <button class="link discreto" type="button" onclick="mostrarLogin('equipe')">Senha da equipe</button>
         </div>
       </div>
 
@@ -327,11 +328,36 @@ td.acao{text-align:right}
     </div>
     <div class="app-actions">
       <span class="modo-chip oculto" id="modo-chip">Gestão</span>
+      <button class="header-chip" id="btn-trocar" onclick="abrirTrocaPropria()">Minha senha</button>
       <button class="header-chip" onclick="sair()">Sair</button>
     </div>
   </header>
 
   <main>
+
+    <!-- SENHA PROVISÓRIA -->
+    <section id="pg-provisoria" class="oculto">
+      <div class="card" style="border-color:var(--wine-soft)">
+        <div class="card-hd"><h2>Defina sua senha</h2>
+          <span class="sub">Sua senha atual é provisória</span></div>
+        <div class="card-bd">
+          <p class="dica" style="margin-bottom:12px">
+            A senha que a gestão te passou serve só para o primeiro acesso. Escolha agora
+            uma que só você conheça — ela não fica visível para mais ninguém, nem para a gestão.
+          </p>
+          <form id="form-minha-senha" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" autocomplete="username" id="ms-email" tabindex="-1" aria-hidden="true"
+                   readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+            <input type="password" id="ms-1" placeholder="Nova senha" autocomplete="new-password"
+                   style="max-width:200px" minlength="8" required>
+            <input type="password" id="ms-2" placeholder="Repita a senha" autocomplete="new-password"
+                   style="max-width:200px" minlength="8" required>
+            <button class="mini forte" type="submit" id="btn-minha-senha">Salvar</button>
+            <span style="font-size:11.5px;color:var(--ink-3)">mínimo 8 caracteres</span>
+          </form>
+        </div>
+      </div>
+    </section>
 
     <!-- CONFIRMAÇÃO DE ACESSO -->
     <section id="pg-status">
@@ -514,12 +540,18 @@ function telaLogin(){
 }
 // Duas formas de entrar convivem durante a transição para contas nominais:
 // o e-mail da pessoa e, enquanto ainda existirem, as senhas compartilhadas.
+const BLOCOS = ['pessoa','equipe'];
+const FOCO   = { pessoa:'p-email', equipe:'s-senha' };
 function mostrarLogin(qual){
-  $('bloco-pessoa').classList.toggle('oculto', qual !== 'pessoa');
-  $('bloco-equipe').classList.toggle('oculto', qual !== 'equipe');
+  BLOCOS.forEach(b => $('bloco-'+b).classList.toggle('oculto', b !== qual));
+  $('tela-login').classList.remove('oculto');
+  $('tela-app').classList.add('oculto');
   limparAviso();
-  try{ localStorage.setItem(CHAVE_MODO, qual); }catch(e){}
-  setTimeout(() => { const c = $(qual === 'pessoa' ? 'p-email' : 's-senha'); if(c) c.focus(); }, 40);
+  // 'nova' e 'recuperar' são passagens, não preferência de entrada
+  if(qual === 'pessoa' || qual === 'equipe'){
+    try{ localStorage.setItem(CHAVE_MODO, qual); }catch(e){}
+  }
+  setTimeout(() => { const c = $(FOCO[qual]); if(c) c.focus(); }, 40);
 }
 function proximoDestino(){
   const p = new URLSearchParams(location.search).get('next');
@@ -571,6 +603,13 @@ async function entrarNoApp(){
   $('tela-app').classList.remove('oculto');
   $('sub-status').textContent =
     (EU.nome || EU.email) + ' · ' + (EH_GESTAO ? 'gestão' : EU.nivel) + ' · ' + marca.nome;
+  // Senha provisória: pede a troca antes de qualquer outra coisa.
+  $('ms-email').value = EU.email || '';
+  $('pg-provisoria').classList.toggle('oculto', !EU.senha_provisoria);
+  // A senha da equipe é compartilhada de propósito — não faz sentido
+  // uma pessoa trocá-la por aqui.
+  $('btn-trocar').classList.toggle('oculto', !!(EU.email || '').match(/^(acesso|gestao)@/));
+
   if(EH_GESTAO){
     $('modo-chip').classList.remove('oculto');
     $('pg-gestao').classList.remove('oculto');
@@ -578,6 +617,31 @@ async function entrarNoApp(){
     carregarGestao();
   }
 }
+
+// Qualquer pessoa troca a própria senha, a qualquer momento.
+function abrirTrocaPropria(){
+  $('pg-provisoria').classList.remove('oculto');
+  $('pg-provisoria').scrollIntoView({ behavior:'smooth', block:'center' });
+  setTimeout(()=>$('ms-1').focus(), 200);
+}
+
+$('form-minha-senha').addEventListener('submit', async e => {
+  e.preventDefault();
+  if($('ms-1').value !== $('ms-2').value){ toast('As duas senhas não conferem.'); $('ms-2').select(); return; }
+  const b = $('btn-minha-senha'); b.disabled = true; b.textContent = 'Salvando…';
+  const { error } = await sb.auth.updateUser({ password: $('ms-1').value });
+  b.disabled = false; b.textContent = 'Salvar';
+  if(error){
+    toast(/should be at least|weak/i.test(error.message || '')
+      ? 'A senha precisa ter pelo menos 8 caracteres.'
+      : (error.message || 'Não foi possível salvar a senha.'));
+    return;
+  }
+  await sb.rpc('app_senha_definida');
+  $('ms-1').value = ''; $('ms-2').value = '';
+  $('pg-provisoria').classList.add('oculto');
+  toast('Senha alterada. Use a nova no próximo acesso.');
+});
 
 async function sair(){
   await sb.auth.signOut();
@@ -683,7 +747,8 @@ const TRADUZ = {
   permissao_invalida:'Permissão inválida.',
   nada_a_mudar:'Nada foi alterado.',
   nao_pode_se_excluir:'Você não pode excluir a própria conta.',
-  ultimo_admin:'Esta é a última conta de gestão ativa — o acesso ficaria sem administrador.'
+  ultimo_admin:'Esta é a última conta de gestão ativa — o acesso ficaria sem administrador.',
+  email_ja_existe:'Já existe conta com esse e-mail.'
 };
 
 const NIVEIS = [['admin','Admin'],['usuario','Usuário'],['consulta','Consulta']];
@@ -710,7 +775,9 @@ async function carregarPessoas(){
       '<td class="text"><input type="text" value="' + escapar(u.nome) + '" style="max-width:150px"' +
         ' onchange="salvarPessoa(\'' + u.user_id + '\',{nome:this.value})"></td>' +
       '<td class="text" style="color:var(--ink-2)">' + escapar(u.email) +
-        (eu ? ' <span class="selo">você</span>' : '') + '</td>' +
+        (eu ? ' <span class="selo">você</span>' : '') +
+        (u.senha_provisoria ? ' <span class="selo" style="color:var(--wine)">senha provisória</span>' : '') +
+        '</td>' +
       '<td class="text"><input type="text" value="' + escapar(u.setor || '') + '" placeholder="—"' +
         ' style="max-width:110px" onchange="salvarPessoa(\'' + u.user_id + '\',{setor:this.value})"></td>' +
       '<td class="text"><select ' + (eu ? 'disabled title="Você não altera o próprio nível"' : '') +
@@ -802,58 +869,80 @@ async function salvarAcessoPessoa(user_id, ferramenta, permissao){
   await carregarPessoas();
 }
 
+// Reset: o sistema sorteia outra senha provisória e mostra uma vez.
+// A gestão repassa; a pessoa troca ao entrar.
 function abrirSenhaPessoa(botao, user_id){
   const linha = botao.closest('tr');
   const aberta = linha.nextElementSibling && linha.nextElementSibling.dataset.extra === '1';
   fecharLinhasExtras();
   if(aberta) return;
 
+  const u = PESSOAS_CACHE.find(x => x.user_id === user_id);
+  if(!u) return;
+
   const nova = document.createElement('tr');
   nova.dataset.extra = '1';
   nova.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
-    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0">' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0">' +
+      '<button class="mini forte" data-acao="sortear">Gerar nova senha</button>' +
+      '<span style="font-size:11.5px;color:var(--ink-3)">para ' + escapar(u.email) +
+      ' — a senha atual dela deixa de valer na hora</span>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0;' +
+    'border-top:1px solid var(--line)">' +
+      '<span style="font-size:11.5px;color:var(--ink-3);min-width:100%">' +
+        'Ou defina uma senha específica:</span>' +
       '<input type="password" placeholder="Nova senha" autocomplete="new-password" ' +
-        'style="max-width:190px" data-campo="s1">' +
-      '<input type="password" placeholder="Repita a senha" autocomplete="new-password" ' +
-        'style="max-width:190px" data-campo="s2">' +
-      '<button class="mini forte" data-acao="salvar">Definir senha</button>' +
-      '<button class="mini" data-acao="cancelar">Cancelar</button>' +
-      '<span style="font-size:11.5px;color:var(--ink-3)">mínimo 8 caracteres</span>' +
+        'style="max-width:180px" data-campo="s1">' +
+      '<input type="password" placeholder="Repita" autocomplete="new-password" ' +
+        'style="max-width:180px" data-campo="s2">' +
+      '<button class="mini" data-acao="salvar">Definir</button>' +
+      '<button class="mini" data-acao="cancelar">Fechar</button>' +
     '</div></td>';
   linha.after(nova);
 
   const s1 = nova.querySelector('[data-campo="s1"]');
   const s2 = nova.querySelector('[data-campo="s2"]');
   nova.querySelector('[data-acao="cancelar"]').onclick = () => nova.remove();
+
+  nova.querySelector('[data-acao="sortear"]').onclick = async (ev) => {
+    const btn = ev.target; btn.disabled = true; btn.textContent = 'Gerando…';
+    const d = await chamarUsuarios({ acao:'senha', user_id });
+    if(d.erro){ btn.disabled = false; btn.textContent = 'Gerar nova senha'; toast(d.erro); return; }
+    mostrarSenhaGerada(nova, u.email, d.senha, 'Senha redefinida');
+  };
+
   nova.querySelector('[data-acao="salvar"]').onclick = async (ev) => {
     if(s1.value !== s2.value){ toast('As duas senhas não conferem.'); s2.focus(); return; }
     if(s1.value.length < 8){ toast('A senha precisa ter pelo menos 8 caracteres.'); s1.focus(); return; }
     const btn = ev.target; btn.disabled = true; btn.textContent = 'Salvando…';
     const d = await chamarUsuarios({ acao:'senha', user_id, senha:s1.value });
-    btn.disabled = false; btn.textContent = 'Definir senha';
+    btn.disabled = false; btn.textContent = 'Definir';
     if(d.erro){ toast(d.erro); return; }
-    nova.remove();
-    toast('Senha definida. Avise a pessoa.');
+    nova.remove(); carregarPessoas();
+    toast('Senha definida. Passe para a pessoa — ela troca ao entrar.');
   };
-  s1.focus();
 }
 
+// A gestão define nome, e-mail e nível. A senha é sorteada pelo sistema e
+// mostrada uma única vez, para ser repassada à pessoa — que troca no
+// primeiro acesso. Ninguém aqui escolhe senha de ninguém.
 function novaPessoa(){
   fecharLinhasExtras();
   const tb = $('tb-pessoas');
   const nova = document.createElement('tr');
   nova.dataset.extra = '1';
   nova.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
-    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0">' +
-      '<input type="text"     placeholder="Nome completo" style="min-width:170px" data-c="nome">' +
-      '<input type="email"    placeholder="e-mail"        style="min-width:190px" data-c="email">' +
-      '<input type="password" placeholder="Senha inicial" style="max-width:170px" data-c="senha" autocomplete="new-password">' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0">' +
+      '<input type="text"  placeholder="Nome completo" style="min-width:170px" data-c="nome">' +
+      '<input type="email" placeholder="e-mail"        style="min-width:200px" data-c="email">' +
       '<select data-c="nivel">' +
         NIVEIS.map(n => '<option value="' + n[0] + '"' + (n[0]==='usuario'?' selected':'') + '>' + n[1] + '</option>').join('') +
       '</select>' +
       '<input type="text" placeholder="Setor (opcional)" style="max-width:140px" data-c="setor">' +
-      '<button class="mini forte" data-acao="criar">Criar</button>' +
+      '<button class="mini forte" data-acao="criar">Criar conta</button>' +
       '<button class="mini" data-acao="cancelar">Cancelar</button>' +
+      '<span style="font-size:11.5px;color:var(--ink-3)">a senha é sorteada e aparece aqui</span>' +
     '</div></td>';
   tb.prepend(nova);
 
@@ -862,13 +951,39 @@ function novaPessoa(){
   nova.querySelector('[data-acao="criar"]').onclick = async (ev) => {
     const btn = ev.target; btn.disabled = true; btn.textContent = 'Criando…';
     const d = await chamarUsuarios({ acao:'criar', nome:val('nome'), email:val('email'),
-                                     senha:val('senha'), nivel:val('nivel'), setor:val('setor') });
-    btn.disabled = false; btn.textContent = 'Criar';
+                                     nivel:val('nivel'), setor:val('setor') });
+    btn.disabled = false; btn.textContent = 'Criar conta';
     if(d.erro){ toast(d.erro); return; }
-    toast('Conta criada e ativa. Passe a senha para a pessoa.');
-    carregarPessoas();
+    // Sem recarregar a lista aqui: o redesenho apagaria a linha que está
+    // mostrando a senha. Quem recarrega é o botão Fechar.
+    mostrarSenhaGerada(nova, val('email'), d.senha, 'Conta criada');
   };
   nova.querySelector('[data-c="nome"]').focus();
+}
+
+// A senha só existe nesta tela e neste momento: depois vira hash no banco.
+// Por isso ela fica visível até alguém fechar, com botão de copiar.
+function mostrarSenhaGerada(linha, email, senha, titulo){
+  linha.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
+    '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 0">' +
+      '<b style="font-size:12.5px">' + titulo + '</b>' +
+      '<span style="font-size:12px;color:var(--ink-2)">' + escapar(email) + '</span>' +
+      '<code style="font-size:15px;font-weight:700;background:var(--card);' +
+      'border:1px solid var(--wine-soft);border-radius:8px;padding:6px 12px;' +
+      'letter-spacing:.04em">' + escapar(senha) + '</code>' +
+      '<button class="mini forte" data-acao="copiar">Copiar</button>' +
+      '<button class="mini" data-acao="fechar">Fechar</button>' +
+      '<span style="font-size:11.5px;color:var(--ink-3);min-width:100%">' +
+        'Anote ou copie agora — esta senha não aparece de novo. A pessoa vai ' +
+        'trocá-la no primeiro acesso.</span>' +
+    '</div></td>';
+  linha.querySelector('[data-acao="fechar"]').onclick = () => { linha.remove(); carregarPessoas(); };
+  linha.querySelector('[data-acao="copiar"]').onclick = (ev) => {
+    navigator.clipboard.writeText(senha).then(()=>{
+      ev.target.textContent = 'Copiado';
+      setTimeout(()=>{ ev.target.textContent = 'Copiar'; }, 1600);
+    }).catch(()=>toast('Não foi possível copiar. Selecione e copie à mão.'));
+  };
 }
 
 async function excluirPessoa(user_id, nome){
