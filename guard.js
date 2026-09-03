@@ -194,8 +194,11 @@
     eAdmin: function () { return this.permissao === 'admin'; },
     sair: function () {
       var cli = this.sb;
+      // Volta para o login guardando de onde a pessoa saiu: quem entra de
+      // novo cai na ferramenta que estava usando, e não parado no hub.
+      var voltar = HUB + '?next=' + encodeURIComponent(location.href.split('#')[0]);
       Promise.resolve(cli && cli.auth.signOut()).then(function () {
-        location.replace(HUB);
+        location.replace(voltar);
       });
     }
   };
