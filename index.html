@@ -309,10 +309,10 @@ try{
 
   <div class="login-card">
     <div class="login-hd">
-      <div class="app-logo">CA</div>
+      <div class="app-logo" id="login-sigla">CA</div>
       <div>
         <h1 data-i18n="app.titulo">Central de Acesso</h1>
-        <p>Wendell &middot; Fiorella</p>
+        <p id="login-org">Wendell &middot; Fiorella</p>
       </div>
     </div>
     <div class="login-bd">
@@ -337,6 +337,13 @@ try{
           <span style="font-size:11.5px;color:var(--ink-3)" data-i18n="login.esqueci">Esqueceu a senha? Peça à gestão.</span>
           <button class="link discreto" type="button" onclick="mostrarLogin('equipe')" data-i18n="login.equipe">Senha da equipe</button>
         </div>
+      </div>
+
+      <!-- sessao de outra organizacao: nao derruba a sessao, so nao entra -->
+      <div id="bloco-outro" class="oculto">
+        <h2 data-i18n="outro.titulo">Portal diferente</h2>
+        <p class="sub" data-i18n="outro.sub">Esta conta não abre este portal.</p>
+        <button class="btn" type="button" onclick="sair()" data-i18n="outro.sair">Sair desta conta</button>
       </div>
 
       <!-- senhas compartilhadas (transição) -->
@@ -371,7 +378,7 @@ try{
       <p id="org-nome">—</p>
     </div>
     <div class="app-actions">
-      <span class="modo-chip oculto" id="modo-chip" data-i18n="chip.gestao">Gestão</span>
+      <span class="modo-chip oculto" id="modo-chip"></span>
       <button class="header-chip" id="tema-app" onclick="alternarTema()" title=""></button>
       <button class="header-chip" id="idioma-app" onclick="alternarIdioma()" title=""></button>
       <button class="header-chip" id="btn-trocar" onclick="abrirTrocaPropria()" data-i18n="btn.minhasenha">Minha senha</button>
@@ -529,6 +536,27 @@ const ORGS = {
 };
 
 /* ============================================================
+   QUAL HUB É ESTE
+   Cada organização tem o seu repositório, e o endereço do próprio
+   HTML é o que decide: URL com "fiorella" é o portal da Fiorella,
+   com "wendell" é o da Wendell. Nada de e-mail: o domínio do e-mail
+   não diz nada sobre a organização — quem manda é o campo
+   'organizacao' do cadastro. Existe gente @fiorella cadastrada na
+   Wendell e o contrário também.
+
+   Sem nenhuma das duas palavras na URL (teste local, por exemplo),
+   o hub volta a aceitar as duas organizações, como antes.
+   ============================================================ */
+const ORG_HUB = (function(){
+  const u = location.href.toLowerCase();
+  if(u.indexOf('fiorella') >= 0) return 'fiorella';
+  if(u.indexOf('wendell')  >= 0) return 'wendell';
+  return null;
+})();
+
+const CONTAS_DO_HUB = CONTAS.filter(c => !ORG_HUB || c.org === ORG_HUB);
+
+/* ============================================================
    IDIOMA
    Os VALORES gravados no banco não mudam nunca: nível continua
    admin / usuario / consulta e permissão continua admin / editar /
@@ -621,7 +649,11 @@ pt: {
   'acessos.semacesso':'sem acesso',
   'acessos.alcanca':'alcança: {p}',
   'acessos.adminabre':'Admin abre todas as ferramentas',
-  'acessos.adminaviso':'Esta pessoa é <b>Admin</b>: ela já abre todas as ferramentas. Exceção por ferramenta não tem efeito enquanto o nível for Admin — por isso os campos abaixo estão travados. Para liberar ferramenta a ferramenta, baixe o nível para Gestão ou Externo.',
+  'acessos.adminaviso':'Esta pessoa é <b>Admin</b>: o nível já abre todas as ferramentas. O que você escolher aqui fica gravado, mas não muda nada enquanto ela for Admin — passa a valer no momento em que o nível baixar para Gestão ou Externo.',
+  'acessos.pelonivel':'(pelo nível)',
+  'outro.titulo':'Portal diferente',
+  'outro.sub':'Esta conta não abre este portal.',
+  'outro.sair':'Sair desta conta',
   'acessos.salvando':'salvando…',
   'acessos.semferr':'Nenhuma ferramenta cadastrada.',
   'acessos.atualizado':'Acesso atualizado.',
@@ -771,7 +803,11 @@ en: {
   'acessos.semacesso':'no access',
   'acessos.alcanca':'reaches: {p}',
   'acessos.adminabre':'Admin opens every tool',
-  'acessos.adminaviso':'This person is an <b>Admin</b>: they already open every tool. A per-tool exception has no effect while the level is Admin — that is why the fields below are locked. To release tool by tool, lower the level to Manager or External.',
+  'acessos.adminaviso':'This person is an <b>Admin</b>: the level already opens every tool. What you choose here is saved, but changes nothing while they are an Admin — it takes effect the moment the level drops to Manager or External.',
+  'acessos.pelonivel':'(by level)',
+  'outro.titulo':'Different portal',
+  'outro.sub':'This account does not open this portal.',
+  'outro.sair':'Sign out',
   'acessos.salvando':'saving…',
   'acessos.semferr':'No tools registered.',
   'acessos.atualizado':'Access updated.',
@@ -961,7 +997,7 @@ function telaLogin(){
 }
 // Duas formas de entrar convivem durante a transição para contas nominais:
 // o e-mail da pessoa e, enquanto ainda existirem, as senhas compartilhadas.
-const BLOCOS = ['pessoa','equipe'];
+const BLOCOS = ['pessoa','equipe','outro'];
 const FOCO   = { pessoa:'p-email', equipe:'s-senha' };
 function mostrarLogin(qual){
   BLOCOS.forEach(b => $('bloco-'+b).classList.toggle('oculto', b !== qual));
@@ -988,19 +1024,38 @@ function proximoDestino(){
 aplicarTema();
 aplicarIdioma();
 
+if(ORG_HUB && ORGS[ORG_HUB]){
+  $('login-sigla').textContent = ORGS[ORG_HUB].sigla;
+  $('login-org').textContent   = ORGS[ORG_HUB].nome;
+}
+
 (async function(){
   const { data:{ session } } = await sb.auth.getSession();
-  session ? await entrarNoApp() : telaLogin();
+  session ? await entrarNoApp(false) : telaLogin();
 })();
+
+// Sessão de outra organização. Não derruba a sessão: as duas páginas moram
+// no mesmo domínio e compartilham o login, então sair aqui tiraria a pessoa
+// do portal certo também. Só não entra, e ela sai se quiser.
+function telaOutroPortal(){
+  $('tela-app').classList.add('oculto');
+  $('tela-login').classList.remove('oculto');
+  BLOCOS.forEach(b => $('bloco-'+b).classList.add('oculto'));
+  $('bloco-outro').classList.remove('oculto');
+  limparAviso();
+}
 
 function escreverSubStatus(){
   const marca = ORGS[ORG] || { sigla:'CA', nome:'—' };
   $('sub-status').textContent =
     (EU.nome || EU.email) + ' · ' + rotuloNivel(EU.nivel) + ' · ' + marca.nome;
   $('sub-senhas').textContent = t('g.senhas.sub', { org: marca.nome });
+  // O chip do topo mostra o nível de quem está logado, não o modo da tela.
+  $('modo-chip').textContent = rotuloNivel(EU.nivel);
+  $('modo-chip').classList.remove('oculto');
 }
 
-async function entrarNoApp(){
+async function entrarNoApp(vindoDoLogin){
   const { data, error } = await sb.rpc('app_perfil');
   if(error || !data || !data.length){
     await sb.auth.signOut();
@@ -1016,6 +1071,21 @@ async function entrarNoApp(){
     avisar(t('erro.suspenso'), 'info');
     return;
   }
+  // Cadastro de outra organização não abre este portal. A recusa é a mesma
+  // de uma senha errada: não confirma nem nega que a conta exista em algum
+  // lugar. Quem tentou entrar agora volta ao formulário; quem só chegou com
+  // uma sessão pronta vê a tela neutra, sem perder o login do outro portal.
+  if(ORG_HUB && data[0].organizacao !== ORG_HUB){
+    if(vindoDoLogin){
+      await sb.auth.signOut();
+      telaLogin();
+      avisar(t('erro.credenciais'));
+    }else{
+      telaOutroPortal();
+    }
+    return;
+  }
+
   EU = data[0];
   EH_GESTAO = data[0].nivel === 'admin';
   ORG = data[0].organizacao;
@@ -1040,7 +1110,6 @@ async function entrarNoApp(){
   $('btn-trocar').classList.toggle('oculto', !!(EU.email || '').match(/^(acesso|gestao)@/));
 
   if(EH_GESTAO){
-    $('modo-chip').classList.remove('oculto');
     $('pg-gestao').classList.remove('oculto');
     carregarGestao();
   }
@@ -1086,8 +1155,8 @@ const CHAVE_MODO   = 'ca-modo-login';
 function ordemDeTentativa(){
   let ultima = null;
   try{ ultima = localStorage.getItem(CHAVE_ULTIMA); }catch(e){}
-  const preferida = CONTAS.filter(c => c.email === ultima);
-  return preferida.concat(CONTAS.filter(c => c.email !== ultima));
+  const preferida = CONTAS_DO_HUB.filter(c => c.email === ultima);
+  return preferida.concat(CONTAS_DO_HUB.filter(c => c.email !== ultima));
 }
 
 // Conta da pessoa. A mensagem de erro é única de propósito: dizer qual dos
@@ -1107,7 +1176,7 @@ $('form-pessoa').addEventListener('submit', async e => {
     $('p-senha').select();
     return;
   }
-  await entrarNoApp();
+  await entrarNoApp(true);
 });
 
 $('form-senha').addEventListener('submit', async e => {
@@ -1133,7 +1202,7 @@ $('form-senha').addEventListener('submit', async e => {
     $('s-senha').select();
     return;
   }
-  await entrarNoApp();
+  await entrarNoApp(true);
 });
 
 
@@ -1269,6 +1338,16 @@ function permissaoEfetiva(u, slug){
   return (PADROES[u.nivel] || {})[slug] || null;
 }
 
+// O que a pessoa alcança de fato, dito por extenso. Para quem é Admin o
+// nível vence a exceção — e isso precisa aparecer escrito, senão o campo
+// mostra uma coisa e o sistema faz outra.
+function textoEfeito(u, slug){
+  const efet = permissaoEfetiva(u, slug);
+  if(!efet) return t('acessos.semacesso');
+  return t('acessos.alcanca', { p: rotuloPerm(efet) }) +
+         (u.nivel === 'admin' ? ' ' + t('acessos.pelonivel') : '');
+}
+
 function montarPainelAcessos(u){
   const eAdmin = u.nivel === 'admin';
   const celulas = FERRAMENTAS_ORG.map(f => {
@@ -1279,8 +1358,7 @@ function montarPainelAcessos(u){
       '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;' +
       'color:var(--ink-3)">' + escapar(f.nome) + '</span>' +
       '<select data-ferr="' + f.slug + '"' +
-        ' onchange="salvarAcessoPessoa(\'' + u.user_id + '\',\'' + f.slug + '\',this.value,this)"' +
-        (eAdmin ? ' disabled title="' + t('acessos.adminabre') + '"' : '') + '>' +
+        ' onchange="salvarAcessoPessoa(\'' + u.user_id + '\',\'' + f.slug + '\',this.value,this)">' +
         '<option value=""' + (exc?'':' selected') + '>' + t('acessos.padrao') +
           ' (' + (padrao ? escapar(rotuloPerm(padrao)) : t('acessos.semacesso')) + ')</option>' +
         PERMISSOES.map(pp =>
@@ -1288,8 +1366,7 @@ function montarPainelAcessos(u){
           escapar(rotuloPerm(pp)) + '</option>').join('') +
       '</select>' +
       '<span class="efeito" style="font-size:10.5px;color:' +
-        (efet ? 'var(--pos)' : 'var(--ink-3)') + '">' +
-        (efet ? t('acessos.alcanca', { p: rotuloPerm(efet) }) : t('acessos.semacesso')) + '</span>' +
+        (efet ? 'var(--pos)' : 'var(--ink-3)') + '">' + textoEfeito(u, f.slug) + '</span>' +
     '</div>';
   }).join('');
 
@@ -1332,7 +1409,7 @@ function repintarAcessos(u, ferramenta){
     const span = sel && sel.parentElement.querySelector('.efeito');
     if(span){
       const efet = permissaoEfetiva(u, ferramenta);
-      span.textContent = efet ? t('acessos.alcanca', { p: rotuloPerm(efet) }) : t('acessos.semacesso');
+      span.textContent = textoEfeito(u, ferramenta);
       span.style.color = efet ? 'var(--pos)' : 'var(--ink-3)';
     }
   }else if(painel){
