@@ -196,6 +196,13 @@ tbody tr:hover td{background:var(--sunk)}
   margin-bottom:14px;display:none;border:1px solid;
 }
 .aviso.erro{display:block;color:var(--neg);border-color:var(--neg);background:var(--sunk)}
+.link{background:none;border:0;color:var(--wine);cursor:pointer;padding:3px;
+  font:600 11.5px Archivo,sans-serif}
+.link:hover{text-decoration:underline}
+.link.discreto{color:var(--ink-3);font-weight:500}
+.login-fd{margin-top:16px;padding-top:14px;border-top:1px solid var(--line-2);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.login-fd.centro{justify-content:center}
 .aviso.info{display:block;color:var(--ink-2);border-color:var(--line);background:var(--sunk)}
 
 /* ---------- HEADER DO APP ---------- */
@@ -266,18 +273,45 @@ td.acao{text-align:right}
       </div>
     </div>
     <div class="login-bd">
-      <h2>Acesso</h2>
-      <p class="sub">Digite a senha para abrir as ferramentas.</p>
       <div id="aviso-senha" class="aviso"></div>
-      <form id="form-senha">
-        <input type="text" autocomplete="username" value="wendell" tabindex="-1" aria-hidden="true"
-               readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
-        <div class="campo">
-          <label for="s-senha">Senha</label>
-          <input id="s-senha" type="password" autocomplete="current-password" autofocus required>
+
+      <!-- conta da pessoa -->
+      <div id="bloco-pessoa">
+        <h2>Acesso</h2>
+        <p class="sub">Entre com o seu e-mail e senha.</p>
+        <form id="form-pessoa">
+          <div class="campo">
+            <label for="p-email">E-mail</label>
+            <input id="p-email" type="email" autocomplete="username" autofocus required>
+          </div>
+          <div class="campo">
+            <label for="p-senha">Senha</label>
+            <input id="p-senha" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="btn" type="submit" id="btn-pessoa">Entrar</button>
+        </form>
+        <div class="login-fd centro">
+          <button class="link discreto" type="button" onclick="mostrarLogin('equipe')">Entrar com senha da equipe</button>
         </div>
-        <button class="btn" type="submit" id="btn-senha">Entrar</button>
-      </form>
+      </div>
+
+      <!-- senhas compartilhadas (transição) -->
+      <div id="bloco-equipe" class="oculto">
+        <h2>Senha da equipe</h2>
+        <p class="sub">Senha compartilhada, sem e-mail.</p>
+        <form id="form-senha">
+          <input type="text" autocomplete="username" value="equipe" tabindex="-1" aria-hidden="true"
+                 readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+          <div class="campo">
+            <label for="s-senha">Senha</label>
+            <input id="s-senha" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="btn" type="submit" id="btn-senha">Entrar</button>
+        </form>
+        <div class="login-fd centro">
+          <button class="link discreto" type="button" onclick="mostrarLogin('pessoa')">&larr; Entrar com meu e-mail</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -319,7 +353,38 @@ td.acao{text-align:right}
     <!-- GESTÃO -->
     <section id="pg-gestao" class="oculto">
 
-      <!-- área 1: senhas -->
+      <!-- área 1: pessoas -->
+      <div class="card">
+        <div class="card-hd">
+          <h2>Pessoas</h2>
+          <span class="sub" id="sub-pessoas"></span>
+          <button class="mini forte" style="margin-left:10px" onclick="novaPessoa()">Adicionar</button>
+        </div>
+        <div class="card-bd" style="padding-bottom:0">
+          <p class="dica">
+            O <b>nível</b> vale para todas as ferramentas: <b>admin</b> abre tudo e administra,
+            <b>usuário</b> edita, <b>consulta</b> só lê. Em <b>Acessos</b> você abre ou fecha
+            uma ferramenta específica para aquela pessoa, sem mexer no nível dela.
+            Quem se cadastra sozinho nasce desativado e não alcança nada até ser liberado aqui.
+          </p>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th class="text">Nome</th>
+              <th class="text">E-mail</th>
+              <th class="text">Setor</th>
+              <th class="text">Nível</th>
+              <th class="text">Situação</th>
+              <th>Último acesso</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="tb-pessoas"><tr><td colspan="7" class="estado">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- área 2: senhas compartilhadas -->
       <div class="card">
         <div class="card-hd">
           <h2>Senhas</h2>
@@ -345,7 +410,7 @@ td.acao{text-align:right}
         </div>
       </div>
 
-      <!-- área 2: ferramentas -->
+      <!-- área 3: ferramentas -->
       <div class="card">
         <div class="card-hd">
           <h2>Ferramentas autorizadas</h2>
@@ -428,7 +493,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
 });
 
-let EH_GESTAO = false, ORG = null;
+let EH_GESTAO = false, ORG = null, EU = null;
 
 /* ---------- utilidades ---------- */
 const $ = id => document.getElementById(id);
@@ -445,7 +510,16 @@ function escapar(t){
 function telaLogin(){
   $('tela-login').classList.remove('oculto');
   $('tela-app').classList.add('oculto');
-  setTimeout(() => $('s-senha').focus(), 40);
+  mostrarLogin(localStorage.getItem(CHAVE_MODO) === 'equipe' ? 'equipe' : 'pessoa');
+}
+// Duas formas de entrar convivem durante a transição para contas nominais:
+// o e-mail da pessoa e, enquanto ainda existirem, as senhas compartilhadas.
+function mostrarLogin(qual){
+  $('bloco-pessoa').classList.toggle('oculto', qual !== 'pessoa');
+  $('bloco-equipe').classList.toggle('oculto', qual !== 'equipe');
+  limparAviso();
+  try{ localStorage.setItem(CHAVE_MODO, qual); }catch(e){}
+  setTimeout(() => { const c = $(qual === 'pessoa' ? 'p-email' : 's-senha'); if(c) c.focus(); }, 40);
 }
 function proximoDestino(){
   const p = new URLSearchParams(location.search).get('next');
@@ -472,6 +546,15 @@ async function entrarNoApp(){
     avisar('Sessão inválida. Entre novamente.');
     return;
   }
+  // Conta desativada entra no Auth, mas não recebe permissão nenhuma.
+  // Sem este aviso, a pessoa veria uma tela vazia sem entender o motivo.
+  if(!data[0].ativo){
+    await sb.auth.signOut();
+    telaLogin();
+    avisar('Acesso suspenso. Fale com a gestão.', 'info');
+    return;
+  }
+  EU = data[0];
   EH_GESTAO = data[0].nivel === 'admin';
   ORG = data[0].organizacao;
 
@@ -487,7 +570,7 @@ async function entrarNoApp(){
   $('tela-login').classList.add('oculto');
   $('tela-app').classList.remove('oculto');
   $('sub-status').textContent =
-    (EH_GESTAO ? 'Senha de gestão' : 'Senha de acesso') + ' · ' + marca.nome;
+    (EU.nome || EU.email) + ' · ' + (EH_GESTAO ? 'gestão' : EU.nivel) + ' · ' + marca.nome;
   if(EH_GESTAO){
     $('modo-chip').classList.remove('oculto');
     $('pg-gestao').classList.remove('oculto');
@@ -505,6 +588,7 @@ async function sair(){
    LOGIN — um campo, quatro senhas possíveis
    ============================================================ */
 const CHAVE_ULTIMA = 'ca-ultima-conta';
+const CHAVE_MODO   = 'ca-modo-login';
 
 // Tenta primeiro a conta usada por último neste navegador: quem sempre
 // usa a mesma senha acerta na primeira tentativa, em vez de na quarta.
@@ -514,6 +598,27 @@ function ordemDeTentativa(){
   const preferida = CONTAS.filter(c => c.email === ultima);
   return preferida.concat(CONTAS.filter(c => c.email !== ultima));
 }
+
+// Conta da pessoa. A mensagem de erro é única de propósito: dizer qual dos
+// dois campos errou entrega a existência do e-mail para quem está tentando.
+$('form-pessoa').addEventListener('submit', async e => {
+  e.preventDefault(); limparAviso();
+  const b = $('btn-pessoa'); b.disabled = true; b.textContent = 'Entrando…';
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('p-email').value.trim().toLowerCase(),
+    password: $('p-senha').value
+  });
+  b.disabled = false; b.textContent = 'Entrar';
+  if(error){
+    const m = (error.message || '').toLowerCase();
+    avisar((m.includes('rate limit') || m.includes('too many'))
+      ? 'Muitas tentativas. Aguarde um minuto.'
+      : 'E-mail ou senha inválidos.');
+    $('p-senha').select();
+    return;
+  }
+  await entrarNoApp();
+});
 
 $('form-senha').addEventListener('submit', async e => {
   e.preventDefault(); limparAviso();
@@ -541,8 +646,240 @@ $('form-senha').addEventListener('submit', async e => {
   await entrarNoApp();
 });
 
+
 /* ============================================================
-   GESTÃO — SENHAS
+   GESTÃO — PESSOAS
+   Toda escrita passa pela Edge Function wgi-usuarios: criar conta
+   exige a chave service_role, que não pode existir num arquivo
+   público. A função confere quem pediu, o nível e a organização.
+   ============================================================ */
+let FERRAMENTAS_ORG = [], PADROES = {};
+
+async function chamarUsuarios(corpo){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return { erro:'Sessão expirada. Entre novamente.' };
+  try{
+    const r = await fetch(SUPABASE_URL + '/functions/v1/wgi-usuarios', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer ' + session.access_token,
+                'apikey': SUPABASE_ANON, 'Content-Type':'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) return { erro: TRADUZ[d.erro] || d.erro || 'Não foi possível concluir.' };
+    return d;
+  }catch(e){ return { erro:'Falha de conexão.' }; }
+}
+
+const TRADUZ = {
+  sem_sessao:'Sessão expirada. Entre novamente.',
+  so_admin:'Só a gestão pode fazer isso.',
+  outra_organizacao:'Essa pessoa é de outra organização.',
+  ferramenta_de_outra_organizacao:'Essa ferramenta é de outra organização.',
+  email_invalido:'E-mail inválido.',
+  senha_curta:'A senha precisa ter pelo menos 8 caracteres.',
+  sem_nome:'Informe o nome.',
+  nivel_invalido:'Nível inválido.',
+  permissao_invalida:'Permissão inválida.',
+  nada_a_mudar:'Nada foi alterado.',
+  nao_pode_se_excluir:'Você não pode excluir a própria conta.',
+  ultimo_admin:'Esta é a última conta de gestão ativa — o acesso ficaria sem administrador.'
+};
+
+const NIVEIS = [['admin','Admin'],['usuario','Usuário'],['consulta','Consulta']];
+
+async function carregarPessoas(){
+  const d = await chamarUsuarios({ acao:'listar' });
+  const tb = $('tb-pessoas');
+  if(d.erro){
+    tb.innerHTML = '<tr><td colspan="7" class="estado">' + escapar(d.erro) + '</td></tr>';
+    return;
+  }
+  FERRAMENTAS_ORG = d.ferramentas || [];
+  PADROES = {};
+  (d.padroes || []).forEach(a => { (PADROES[a.nivel] ||= {})[a.ferramenta] = a.permissao; });
+
+  const pessoas = d.usuarios || [];
+  $('sub-pessoas').textContent =
+    pessoas.length + (pessoas.length === 1 ? ' conta' : ' contas') +
+    ' · ' + pessoas.filter(p=>p.ativo).length + ' ativas';
+
+  tb.innerHTML = pessoas.map(u => {
+    const eu = EU && u.email === EU.email;
+    return '<tr>' +
+      '<td class="text"><input type="text" value="' + escapar(u.nome) + '" style="max-width:150px"' +
+        ' onchange="salvarPessoa(\'' + u.user_id + '\',{nome:this.value})"></td>' +
+      '<td class="text" style="color:var(--ink-2)">' + escapar(u.email) +
+        (eu ? ' <span class="selo">você</span>' : '') + '</td>' +
+      '<td class="text"><input type="text" value="' + escapar(u.setor || '') + '" placeholder="—"' +
+        ' style="max-width:110px" onchange="salvarPessoa(\'' + u.user_id + '\',{setor:this.value})"></td>' +
+      '<td class="text"><select ' + (eu ? 'disabled title="Você não altera o próprio nível"' : '') +
+        ' onchange="salvarPessoa(\'' + u.user_id + '\',{nivel:this.value})">' +
+        NIVEIS.map(n => '<option value="' + n[0] + '"' + (u.nivel===n[0]?' selected':'') + '>' + n[1] + '</option>').join('') +
+        '</select></td>' +
+      '<td class="text"><button class="pilula ' + (u.ativo?'sim':'nao') + '"' +
+        (eu ? ' disabled title="Você não desativa a própria conta"'
+            : ' onclick="salvarPessoa(\'' + u.user_id + '\',{ativo:' + (!u.ativo) + '})"') + '>' +
+        (u.ativo?'Ativo':'Inativo') + '</button></td>' +
+      '<td style="color:var(--ink-3)">' + (u.ultimo_acesso
+        ? new Date(u.ultimo_acesso).toLocaleString('pt-BR',
+            {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
+        : '—') + '</td>' +
+      '<td class="acao" style="white-space:nowrap">' +
+        '<button class="mini" onclick="abrirAcessos(this,\'' + u.user_id + '\')">Acessos</button> ' +
+        '<button class="mini" onclick="abrirSenhaPessoa(this,\'' + u.user_id + '\')">Senha</button> ' +
+        (eu ? '' : '<button class="mini" onclick="excluirPessoa(\'' + u.user_id + '\',\'' +
+              escapar(u.nome).replace(/'/g,'') + '\')">Excluir</button>') +
+      '</td>' +
+    '</tr>';
+  }).join('') || '<tr><td colspan="7" class="estado">Nenhuma conta nominal ainda.</td></tr>';
+
+  PESSOAS_CACHE = pessoas;
+}
+let PESSOAS_CACHE = [];
+
+async function salvarPessoa(user_id, campos){
+  const d = await chamarUsuarios(Object.assign({ acao:'atualizar', user_id }, campos));
+  toast(d.erro ? d.erro : 'Salvo.');
+  carregarPessoas();
+}
+
+function fecharLinhasExtras(){
+  document.querySelectorAll('#tb-pessoas tr[data-extra="1"]').forEach(r => r.remove());
+}
+
+// Permissão que a pessoa alcança de fato: exceção dela, senão a regra do nível.
+// Admin abre tudo, independentemente de exceção — é o que app_permissao faz.
+function permissaoEfetiva(u, slug){
+  if(u.nivel === 'admin') return 'admin';
+  const exc = (u.acessos || []).find(a => a.ferramenta === slug);
+  if(exc) return exc.permissao;
+  return (PADROES[u.nivel] || {})[slug] || null;
+}
+
+function abrirAcessos(botao, user_id){
+  const linha = botao.closest('tr');
+  const aberta = linha.nextElementSibling && linha.nextElementSibling.dataset.extra === '1';
+  fecharLinhasExtras();
+  if(aberta) return;
+
+  const u = PESSOAS_CACHE.find(x => x.user_id === user_id);
+  if(!u) return;
+
+  const nova = document.createElement('tr');
+  nova.dataset.extra = '1';
+  const celulas = FERRAMENTAS_ORG.map(f => {
+    const exc = (u.acessos || []).find(a => a.ferramenta === f.slug);
+    const efet = permissaoEfetiva(u, f.slug);
+    const padrao = (PADROES[u.nivel] || {})[f.slug] || null;
+    return '<div style="display:flex;flex-direction:column;gap:3px;min-width:150px">' +
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;' +
+      'color:var(--ink-3)">' + escapar(f.nome) + '</span>' +
+      '<select onchange="salvarAcessoPessoa(\'' + user_id + '\',\'' + f.slug + '\',this.value)"' +
+        (u.nivel === 'admin' ? ' disabled title="Admin abre todas as ferramentas"' : '') + '>' +
+        '<option value=""' + (exc?'':' selected') + '>Padrão do nível' +
+          (padrao ? ' (' + padrao + ')' : ' (sem acesso)') + '</option>' +
+        ['ver','editar','admin'].map(pp =>
+          '<option value="' + pp + '"' + (exc && exc.permissao===pp?' selected':'') + '>' +
+          pp[0].toUpperCase()+pp.slice(1) + '</option>').join('') +
+      '</select>' +
+      '<span style="font-size:10.5px;color:' + (efet ? 'var(--pos)' : 'var(--ink-3)') + '">' +
+        (efet ? 'alcança: ' + efet : 'sem acesso') + '</span>' +
+    '</div>';
+  }).join('');
+
+  nova.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:6px 0">' +
+    (celulas || '<span style="font-size:12px;color:var(--ink-3)">Nenhuma ferramenta cadastrada.</span>') +
+    '</div></td>';
+  linha.after(nova);
+}
+
+async function salvarAcessoPessoa(user_id, ferramenta, permissao){
+  const d = await chamarUsuarios({ acao:'acesso', user_id, ferramenta,
+                                   permissao: permissao || null });
+  toast(d.erro ? d.erro : 'Acesso atualizado.');
+  await carregarPessoas();
+}
+
+function abrirSenhaPessoa(botao, user_id){
+  const linha = botao.closest('tr');
+  const aberta = linha.nextElementSibling && linha.nextElementSibling.dataset.extra === '1';
+  fecharLinhasExtras();
+  if(aberta) return;
+
+  const nova = document.createElement('tr');
+  nova.dataset.extra = '1';
+  nova.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0">' +
+      '<input type="password" placeholder="Nova senha" autocomplete="new-password" ' +
+        'style="max-width:190px" data-campo="s1">' +
+      '<input type="password" placeholder="Repita a senha" autocomplete="new-password" ' +
+        'style="max-width:190px" data-campo="s2">' +
+      '<button class="mini forte" data-acao="salvar">Definir senha</button>' +
+      '<button class="mini" data-acao="cancelar">Cancelar</button>' +
+      '<span style="font-size:11.5px;color:var(--ink-3)">mínimo 8 caracteres</span>' +
+    '</div></td>';
+  linha.after(nova);
+
+  const s1 = nova.querySelector('[data-campo="s1"]');
+  const s2 = nova.querySelector('[data-campo="s2"]');
+  nova.querySelector('[data-acao="cancelar"]').onclick = () => nova.remove();
+  nova.querySelector('[data-acao="salvar"]').onclick = async (ev) => {
+    if(s1.value !== s2.value){ toast('As duas senhas não conferem.'); s2.focus(); return; }
+    if(s1.value.length < 8){ toast('A senha precisa ter pelo menos 8 caracteres.'); s1.focus(); return; }
+    const btn = ev.target; btn.disabled = true; btn.textContent = 'Salvando…';
+    const d = await chamarUsuarios({ acao:'senha', user_id, senha:s1.value });
+    btn.disabled = false; btn.textContent = 'Definir senha';
+    if(d.erro){ toast(d.erro); return; }
+    nova.remove();
+    toast('Senha definida. Avise a pessoa.');
+  };
+  s1.focus();
+}
+
+function novaPessoa(){
+  fecharLinhasExtras();
+  const tb = $('tb-pessoas');
+  const nova = document.createElement('tr');
+  nova.dataset.extra = '1';
+  nova.innerHTML = '<td colspan="7" style="background:var(--sunk)">' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0">' +
+      '<input type="text"     placeholder="Nome completo" style="min-width:170px" data-c="nome">' +
+      '<input type="email"    placeholder="e-mail"        style="min-width:190px" data-c="email">' +
+      '<input type="password" placeholder="Senha inicial" style="max-width:170px" data-c="senha" autocomplete="new-password">' +
+      '<select data-c="nivel">' +
+        NIVEIS.map(n => '<option value="' + n[0] + '"' + (n[0]==='usuario'?' selected':'') + '>' + n[1] + '</option>').join('') +
+      '</select>' +
+      '<input type="text" placeholder="Setor (opcional)" style="max-width:140px" data-c="setor">' +
+      '<button class="mini forte" data-acao="criar">Criar</button>' +
+      '<button class="mini" data-acao="cancelar">Cancelar</button>' +
+    '</div></td>';
+  tb.prepend(nova);
+
+  const val = c => nova.querySelector('[data-c="' + c + '"]').value;
+  nova.querySelector('[data-acao="cancelar"]').onclick = () => nova.remove();
+  nova.querySelector('[data-acao="criar"]').onclick = async (ev) => {
+    const btn = ev.target; btn.disabled = true; btn.textContent = 'Criando…';
+    const d = await chamarUsuarios({ acao:'criar', nome:val('nome'), email:val('email'),
+                                     senha:val('senha'), nivel:val('nivel'), setor:val('setor') });
+    btn.disabled = false; btn.textContent = 'Criar';
+    if(d.erro){ toast(d.erro); return; }
+    toast('Conta criada e ativa. Passe a senha para a pessoa.');
+    carregarPessoas();
+  };
+  nova.querySelector('[data-c="nome"]').focus();
+}
+
+async function excluirPessoa(user_id, nome){
+  if(!confirm('Excluir a conta de "' + nome + '"? A pessoa perde o acesso imediatamente.')) return;
+  const d = await chamarUsuarios({ acao:'excluir', user_id });
+  toast(d.erro ? d.erro : 'Conta excluída.');
+  carregarPessoas();
+}
+
+/* ============================================================
+   GESTÃO — SENHAS COMPARTILHADAS
    ============================================================ */
 async function carregarSenhas(){
   const { data, error } = await sb.rpc('app_contas');
@@ -632,6 +969,7 @@ async function trocarSenha(email, senha){
    GESTÃO DO CATÁLOGO
    ============================================================ */
 async function carregarGestao(){
+  carregarPessoas();
   carregarSenhas();
   return carregarFerramentas();
 }
