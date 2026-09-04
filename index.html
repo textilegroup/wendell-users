@@ -333,9 +333,8 @@ try{
           </div>
           <button class="btn" type="submit" id="btn-pessoa" data-i18n="btn.entrar">Entrar</button>
         </form>
-        <div class="login-fd">
+        <div class="login-fd centro">
           <span style="font-size:11.5px;color:var(--ink-3)" data-i18n="login.esqueci">Esqueceu a senha? Peça à gestão.</span>
-          <button class="link discreto" type="button" onclick="mostrarLogin('equipe')" data-i18n="login.equipe">Senha da equipe</button>
         </div>
       </div>
 
@@ -346,24 +345,6 @@ try{
         <button class="btn" type="button" onclick="sair()" data-i18n="outro.sair">Sair desta conta</button>
       </div>
 
-      <!-- senhas compartilhadas (transição) -->
-      <div id="bloco-equipe" class="oculto">
-        <h2 data-i18n="equipe.titulo">Senha da equipe</h2>
-        <p class="sub" data-i18n="equipe.sub">Senha compartilhada, sem e-mail.</p>
-        <form id="form-senha">
-          <input type="text" autocomplete="username" value="equipe" tabindex="-1" aria-hidden="true"
-                 readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
-          <div class="campo">
-            <label for="s-senha" data-i18n="campo.senha">Senha</label>
-            <input id="s-senha" type="password" autocomplete="current-password" required>
-          </div>
-          <button class="btn" type="submit" id="btn-senha" data-i18n="btn.entrar">Entrar</button>
-        </form>
-        <div class="login-fd centro">
-          <button class="link discreto" type="button" onclick="mostrarLogin('pessoa')"
-                  data-i18n="equipe.voltar">&larr; Entrar com meu e-mail</button>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -460,29 +441,7 @@ try{
         </div>
       </div>
 
-      <!-- área 2: senhas compartilhadas -->
-      <div class="card">
-        <div class="card-hd">
-          <h2 data-i18n="g.senhas">Senhas</h2>
-          <span class="sub" id="sub-senhas"></span>
-        </div>
-        <div class="card-bd" style="padding-bottom:0">
-          <p class="dica" data-i18n="g.senhas.dica"></p>
-        </div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr>
-              <th class="text" data-i18n="th.senha">Senha</th>
-              <th class="text" data-i18n="th.abre">Abre</th>
-              <th class="text" data-i18n="th.conta">Conta</th>
-              <th></th>
-            </tr></thead>
-            <tbody id="tb-senhas"><tr><td colspan="4" class="estado">…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- área 3: ferramentas -->
+      <!-- área 2: ferramentas -->
       <div class="card">
         <div class="card-hd">
           <h2 data-i18n="g.ferr">Ferramentas autorizadas</h2>
@@ -500,10 +459,9 @@ try{
               <th class="text" data-i18n="th.nome">Nome</th>
               <th class="text" data-i18n="th.descricao">Descrição</th>
               <th class="text" data-i18n="th.url">URL</th>
-              <th class="text" data-i18n="th.acessocomum">Acesso comum</th>
               <th></th>
             </tr></thead>
-            <tbody id="tb-ferramentas"><tr><td colspan="6" class="estado">…</td></tr></tbody>
+            <tbody id="tb-ferramentas"><tr><td colspan="5" class="estado">…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -518,17 +476,6 @@ try{
    ============================================================ */
 const SUPABASE_URL  = 'https://eepmlsdbtcvsjxdcvimi.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_048Dv-jRALn34Ythhj9ngA_fZ1gsNI_';
-
-// Quatro contas compartilhadas, um campo de senha só: acesso e gestão
-// para cada organização. A página tenta uma a uma até acertar — os
-// e-mails não são segredo, as senhas ficam no servidor do Supabase e
-// nunca aparecem neste arquivo.
-const CONTAS = [
-  { email:'acesso@wendell.com',  org:'wendell'  },
-  { email:'gestao@wendell.com',  org:'wendell'  },
-  { email:'acesso@fiorella.com', org:'fiorella' },
-  { email:'gestao@fiorella.com', org:'fiorella' }
-];
 
 const ORGS = {
   wendell:  { sigla:'WGI', nome:'Wendell Global Interlining' },
@@ -554,7 +501,6 @@ const ORG_HUB = (function(){
   return null;
 })();
 
-const CONTAS_DO_HUB = CONTAS.filter(c => !ORG_HUB || c.org === ORG_HUB);
 
 /* ============================================================
    IDIOMA
@@ -572,10 +518,6 @@ pt: {
   'login.titulo':'Acesso',
   'login.sub':'Entre com o seu e-mail e senha.',
   'login.esqueci':'Esqueceu a senha? Peça à gestão.',
-  'login.equipe':'Senha da equipe',
-  'equipe.titulo':'Senha da equipe',
-  'equipe.sub':'Senha compartilhada, sem e-mail.',
-  'equipe.voltar':'← Entrar com meu e-mail',
   'campo.email':'E-mail',
   'campo.senha':'Senha',
   'btn.entrar':'Entrar',
@@ -610,17 +552,13 @@ pt: {
   'status.texto':'Abra a ferramenta que você precisa — ela reconhece este acesso sozinha, sem pedir a senha de novo. Se você chegou aqui por um link de ferramenta, o retorno é automático.',
 
   'g.pessoas':'Pessoas',
-  'g.pessoas.dica':'O <b>nível</b> vale para todas as ferramentas: <b>Admin</b> abre tudo e administra, <b>Gestão</b> edita, <b>Externo</b> só lê. Em <b>Acessos</b> você abre ou fecha uma ferramenta específica para aquela pessoa, sem mexer no nível dela. O botão <b>↺</b> ao lado do nível apaga essas exceções e devolve a pessoa ao padrão do nível. Quem se cadastra sozinho nasce desativado e não alcança nada até ser liberado aqui.',
-  'g.senhas':'Senhas',
-  'g.senhas.sub':'Válidas somente para {org}',
-  'g.senhas.dica':'A troca acontece no servidor do Supabase — a senha nunca passa por nenhum arquivo público. Mínimo de 8 caracteres. Quem já estiver logado com a senha antiga continua dentro até sair ou a sessão expirar.',
+  'g.pessoas.dica':'Quem abre o quê é decidido pessoa a pessoa, em <b>Acessos</b>: uma conta nova não alcança nada até você liberar ferramenta por ferramenta. O <b>nível</b> responde por outra coisa — <b>Admin</b> administra este portal (cria contas, redefine senhas, cadastra ferramentas) e, por ser Admin, abre todas as ferramentas; <b>Gestão</b> e <b>Externo</b> não administram nada e dependem só do que estiver em Acessos. O botão <b>↺</b> apaga as exceções daquela pessoa. Quem se cadastra sozinho nasce desativado.',
   'g.ferr':'Ferramentas autorizadas',
   'g.ferr.sub':'Chaves que o guard reconhece',
-  'g.ferr.dica':'A <b>chave</b> é o que autoriza a página. Cadastre-a aqui e coloque esta linha no <code>&lt;head&gt;</code> do HTML: <code>&lt;script src="guard.js" data-app="CHAVE"&gt;&lt;/script&gt;</code> — com o endereço completo do <code>guard.js</code>. <b>Acesso comum</b> desligado restringe a ferramenta a quem entra com a senha de gestão. A <b>URL</b> não afeta o funcionamento: serve para você lembrar onde cada página mora.',
+  'g.ferr.dica':'A <b>chave</b> é o que autoriza a página. Cadastre-a aqui e coloque esta linha no <code>&lt;head&gt;</code> do HTML: <code>&lt;script src="guard.js" data-app="CHAVE"&gt;&lt;/script&gt;</code> — com o endereço completo do <code>guard.js</code>. A ferramenta <b>nasce fechada</b>: ninguém a enxerga até você liberá-la em <b>Acessos</b>, pessoa por pessoa — quem é Admin abre desde o primeiro momento, pelo nível. A <b>URL</b> não afeta o funcionamento: serve para você lembrar onde cada página mora.',
 
   'th.nome':'Nome', 'th.email':'E-mail', 'th.setor':'Setor', 'th.nivel':'Nível',
   'th.situacao':'Situação', 'th.ultimoacesso':'Último acesso',
-  'th.senha':'Senha', 'th.abre':'Abre', 'th.conta':'Conta',
   'th.chave':'Chave', 'th.descricao':'Descrição', 'th.url':'URL',
   'th.acessocomum':'Acesso comum',
 
@@ -646,6 +584,7 @@ pt: {
   'salvo':'Salvo.',
 
   'acessos.padrao':'Padrão do nível',
+  'acessos.nada':'Sem acesso',
   'acessos.semacesso':'sem acesso',
   'acessos.alcanca':'alcança: {p}',
   'acessos.adminabre':'Admin abre todas as ferramentas',
@@ -668,8 +607,6 @@ pt: {
   'senha.curta':'A senha precisa ter pelo menos 8 caracteres.',
   'senha.trocada':'Senha alterada. Use a nova no próximo acesso.',
   'senha.naosalvou':'Não foi possível salvar a senha.',
-  'senha.avisar':'Senha alterada. Avise quem usa esta senha.',
-  'senha.alterar':'Alterar senha',
   'senha.naocopiou':'Não foi possível copiar. Selecione e copie à mão.',
 
   'nova.nome':'Nome completo', 'nova.email':'e-mail', 'nova.setor':'Setor (opcional)',
@@ -678,12 +615,8 @@ pt: {
   'nova.criada':'Conta criada', 'nova.redefinida':'Senha redefinida',
   'nova.anote':'Anote ou copie agora — esta senha não aparece de novo. A pessoa vai trocá-la no primeiro acesso.',
 
-  'conta.acesso':'Acesso', 'conta.gestao':'Gestão',
-  'conta.abre.admin':'Autorização e esta área de gestão',
-  'conta.abre.comum':'Apenas as ferramentas liberadas',
-  'conta.vazio':'Nenhuma conta.',
 
-  'ferr.liberada':'Liberada', 'ferr.sogestao':'Só gestão', 'ferr.remover':'Remover',
+'ferr.remover':'Remover',
   'ferr.vazio':'Nenhuma ferramenta cadastrada.',
   'ferr.pnome':'Nome da ferramenta:',
   'ferr.pchave':'Chave — sem espaços nem acentos (ex.: pedidos):',
@@ -700,7 +633,6 @@ pt: {
   'erro.suspenso':'Acesso suspenso. Fale com a gestão.',
   'erro.tentativas':'Muitas tentativas. Aguarde um minuto.',
   'erro.credenciais':'E-mail ou senha inválidos.',
-  'erro.senhaincorreta':'Senha incorreta.',
   'erro.conexao':'Falha de conexão.',
   'erro.expirada':'Sessão expirada. Entre novamente.',
   'erro.generico':'Não foi possível concluir.',
@@ -726,10 +658,6 @@ en: {
   'login.titulo':'Sign in',
   'login.sub':'Enter your e-mail and password.',
   'login.esqueci':'Forgot your password? Ask your manager.',
-  'login.equipe':'Team password',
-  'equipe.titulo':'Team password',
-  'equipe.sub':'Shared password, no e-mail.',
-  'equipe.voltar':'← Sign in with my e-mail',
   'campo.email':'E-mail',
   'campo.senha':'Password',
   'btn.entrar':'Sign in',
@@ -764,17 +692,13 @@ en: {
   'status.texto':'Open the tool you need — it recognises this session on its own and will not ask for the password again. If you arrived here from a tool link, you are sent back automatically.',
 
   'g.pessoas':'People',
-  'g.pessoas.dica':'The <b>level</b> applies to every tool: <b>Admin</b> opens and administers everything, <b>Manager</b> edits, <b>External</b> reads only. Under <b>Access</b> you open or close one specific tool for that person without touching their level. The <b>↺</b> button next to the level clears those exceptions and returns the person to the level default. Anyone who signs up on their own starts disabled and reaches nothing until released here.',
-  'g.senhas':'Passwords',
-  'g.senhas.sub':'Valid for {org} only',
-  'g.senhas.dica':'The change runs on the Supabase server — the password never passes through any public file. Minimum 8 characters. Anyone already signed in with the old password stays in until they sign out or the session expires.',
+  'g.pessoas.dica':'Who opens what is decided person by person, under <b>Access</b>: a new account reaches nothing until you release it tool by tool. The <b>level</b> answers for something else — <b>Admin</b> administers this portal (creates accounts, resets passwords, registers tools) and, being an Admin, opens every tool; <b>Manager</b> and <b>External</b> administer nothing and depend only on what is set under Access. The <b>↺</b> button clears that person\'s exceptions. Anyone who signs up on their own starts disabled.',
   'g.ferr':'Authorised tools',
   'g.ferr.sub':'Keys the guard recognises',
-  'g.ferr.dica':'The <b>key</b> is what authorises the page. Register it here and put this line in the HTML <code>&lt;head&gt;</code>: <code>&lt;script src="guard.js" data-app="KEY"&gt;&lt;/script&gt;</code> — with the full address of <code>guard.js</code>. Turning <b>Common access</b> off restricts the tool to whoever signs in with the management password. The <b>URL</b> does not affect anything: it is there so you remember where each page lives.',
+  'g.ferr.dica':'The <b>key</b> is what authorises the page. Register it here and put this line in the HTML <code>&lt;head&gt;</code>: <code>&lt;script src="guard.js" data-app="KEY"&gt;&lt;/script&gt;</code> — with the full address of <code>guard.js</code>. A tool <b>starts closed</b>: nobody sees it until you release it under <b>Access</b>, person by person — an Admin opens it from the first moment, by level. The <b>URL</b> does not affect anything: it is there so you remember where each page lives.',
 
   'th.nome':'Name', 'th.email':'E-mail', 'th.setor':'Department', 'th.nivel':'Level',
   'th.situacao':'Status', 'th.ultimoacesso':'Last access',
-  'th.senha':'Password', 'th.abre':'Opens', 'th.conta':'Account',
   'th.chave':'Key', 'th.descricao':'Description', 'th.url':'URL',
   'th.acessocomum':'Common access',
 
@@ -800,6 +724,7 @@ en: {
   'salvo':'Saved.',
 
   'acessos.padrao':'Level default',
+  'acessos.nada':'No access',
   'acessos.semacesso':'no access',
   'acessos.alcanca':'reaches: {p}',
   'acessos.adminabre':'Admin opens every tool',
@@ -822,8 +747,6 @@ en: {
   'senha.curta':'The password needs at least 8 characters.',
   'senha.trocada':'Password changed. Use the new one next time.',
   'senha.naosalvou':'Could not save the password.',
-  'senha.avisar':'Password changed. Tell whoever uses it.',
-  'senha.alterar':'Change password',
   'senha.naocopiou':'Could not copy. Select and copy by hand.',
 
   'nova.nome':'Full name', 'nova.email':'e-mail', 'nova.setor':'Department (optional)',
@@ -832,12 +755,8 @@ en: {
   'nova.criada':'Account created', 'nova.redefinida':'Password reset',
   'nova.anote':'Write it down or copy it now — this password is not shown again. The person will change it on first sign-in.',
 
-  'conta.acesso':'Access', 'conta.gestao':'Manager',
-  'conta.abre.admin':'Authorisation and this management area',
-  'conta.abre.comum':'Only the released tools',
-  'conta.vazio':'No accounts.',
 
-  'ferr.liberada':'Released', 'ferr.sogestao':'Manager only', 'ferr.remover':'Remove',
+'ferr.remover':'Remove',
   'ferr.vazio':'No tools registered.',
   'ferr.pnome':'Tool name:',
   'ferr.pchave':'Key — no spaces or accents (e.g. orders):',
@@ -854,7 +773,6 @@ en: {
   'erro.suspenso':'Access suspended. Talk to your manager.',
   'erro.tentativas':'Too many attempts. Wait a minute.',
   'erro.credenciais':'Invalid e-mail or password.',
-  'erro.senhaincorreta':'Wrong password.',
   'erro.conexao':'Connection failed.',
   'erro.expirada':'Session expired. Sign in again.',
   'erro.generico':'Could not complete.',
@@ -993,20 +911,17 @@ function escapar(v){
 function telaLogin(){
   $('tela-login').classList.remove('oculto');
   $('tela-app').classList.add('oculto');
-  mostrarLogin(localStorage.getItem(CHAVE_MODO) === 'equipe' ? 'equipe' : 'pessoa');
+  mostrarLogin('pessoa');
 }
 // Duas formas de entrar convivem durante a transição para contas nominais:
 // o e-mail da pessoa e, enquanto ainda existirem, as senhas compartilhadas.
-const BLOCOS = ['pessoa','equipe','outro'];
-const FOCO   = { pessoa:'p-email', equipe:'s-senha' };
+const BLOCOS = ['pessoa','outro'];
+const FOCO   = { pessoa:'p-email' };
 function mostrarLogin(qual){
   BLOCOS.forEach(b => $('bloco-'+b).classList.toggle('oculto', b !== qual));
   $('tela-login').classList.remove('oculto');
   $('tela-app').classList.add('oculto');
   limparAviso();
-  if(qual === 'pessoa' || qual === 'equipe'){
-    try{ localStorage.setItem(CHAVE_MODO, qual); }catch(e){}
-  }
   setTimeout(() => { const c = $(FOCO[qual]); if(c) c.focus(); }, 40);
 }
 function proximoDestino(){
@@ -1049,7 +964,6 @@ function escreverSubStatus(){
   const marca = ORGS[ORG] || { sigla:'CA', nome:'—' };
   $('sub-status').textContent =
     (EU.nome || EU.email) + ' · ' + rotuloNivel(EU.nivel) + ' · ' + marca.nome;
-  $('sub-senhas').textContent = t('g.senhas.sub', { org: marca.nome });
   // O chip do topo mostra o nível de quem está logado, não o modo da tela.
   $('modo-chip').textContent = rotuloNivel(EU.nivel);
   $('modo-chip').classList.remove('oculto');
@@ -1147,18 +1061,6 @@ async function sair(){
 /* ============================================================
    LOGIN — um campo, quatro senhas possíveis
    ============================================================ */
-const CHAVE_ULTIMA = 'ca-ultima-conta';
-const CHAVE_MODO   = 'ca-modo-login';
-
-// Tenta primeiro a conta usada por último neste navegador: quem sempre
-// usa a mesma senha acerta na primeira tentativa, em vez de na quarta.
-function ordemDeTentativa(){
-  let ultima = null;
-  try{ ultima = localStorage.getItem(CHAVE_ULTIMA); }catch(e){}
-  const preferida = CONTAS_DO_HUB.filter(c => c.email === ultima);
-  return preferida.concat(CONTAS_DO_HUB.filter(c => c.email !== ultima));
-}
-
 // Conta da pessoa. A mensagem de erro é única de propósito: dizer qual dos
 // dois campos errou entrega a existência do e-mail para quem está tentando.
 $('form-pessoa').addEventListener('submit', async e => {
@@ -1174,32 +1076,6 @@ $('form-pessoa').addEventListener('submit', async e => {
     avisar((m.includes('rate limit') || m.includes('too many'))
       ? t('erro.tentativas') : t('erro.credenciais'));
     $('p-senha').select();
-    return;
-  }
-  await entrarNoApp(true);
-});
-
-$('form-senha').addEventListener('submit', async e => {
-  e.preventDefault(); limparAviso();
-  const b = $('btn-senha'); b.disabled = true; b.textContent = t('btn.entrando');
-  const senha = $('s-senha').value;
-
-  let ok = false, limite = false;
-  for(const conta of ordemDeTentativa()){
-    const { error } = await sb.auth.signInWithPassword({ email: conta.email, password: senha });
-    if(!error){
-      ok = true;
-      try{ localStorage.setItem(CHAVE_ULTIMA, conta.email); }catch(e){}
-      break;
-    }
-    const m = (error.message || '').toLowerCase();
-    if(m.includes('rate limit') || m.includes('too many')){ limite = true; break; }
-  }
-
-  b.disabled = false; b.textContent = t('btn.entrar');
-  if(!ok){
-    avisar(limite ? t('erro.tentativas') : t('erro.senhaincorreta'));
-    $('s-senha').select();
     return;
   }
   await entrarNoApp(true);
@@ -1359,8 +1235,9 @@ function montarPainelAcessos(u){
       'color:var(--ink-3)">' + escapar(f.nome) + '</span>' +
       '<select data-ferr="' + f.slug + '"' +
         ' onchange="salvarAcessoPessoa(\'' + u.user_id + '\',\'' + f.slug + '\',this.value,this)">' +
-        '<option value=""' + (exc?'':' selected') + '>' + t('acessos.padrao') +
-          ' (' + (padrao ? escapar(rotuloPerm(padrao)) : t('acessos.semacesso')) + ')</option>' +
+        '<option value=""' + (exc?'':' selected') + '>' +
+          (padrao ? t('acessos.padrao') + ' (' + escapar(rotuloPerm(padrao)) + ')'
+                  : t('acessos.nada')) + '</option>' +
         PERMISSOES.map(pp =>
           '<option value="' + pp + '"' + (exc && exc.permissao===pp?' selected':'') + '>' +
           escapar(rotuloPerm(pp)) + '</option>').join('') +
@@ -1582,115 +1459,22 @@ async function excluirPessoa(user_id, nome){
 }
 
 /* ============================================================
-   GESTÃO — SENHAS COMPARTILHADAS
-   ============================================================ */
-async function carregarSenhas(){
-  const { data, error } = await sb.rpc('app_contas');
-  const tb = $('tb-senhas');
-  if(error || !data){
-    tb.innerHTML = '<tr><td colspan="4" class="estado">' + t('naocarregou') + '</td></tr>';
-    return;
-  }
-  // O rótulo sai do e-mail, não do nível: é o e-mail que diz qual das duas
-  // senhas compartilhadas é esta, e ele não muda por engano no cadastro.
-  tb.innerHTML = data.map(c => {
-    const eGestao = /^gestao@/.test(c.email || '');
-    return '<tr data-email="' + escapar(c.email) + '">' +
-      '<td class="text"><b>' + (eGestao ? t('conta.gestao') : t('conta.acesso')) + '</b></td>' +
-      '<td class="text" style="color:var(--ink-2)">' +
-        (eGestao ? t('conta.abre.admin') : t('conta.abre.comum')) + '</td>' +
-      '<td class="text" style="color:var(--ink-3)">' + escapar(c.email) + '</td>' +
-      '<td class="acao"><button class="mini" ' +
-        'onclick="abrirTrocaSenha(this,\'' + escapar(c.email) + '\')">' + t('senha.alterar') + '</button></td>' +
-    '</tr>';
-  }).join('') || '<tr><td colspan="4" class="estado">' + t('conta.vazio') + '</td></tr>';
-}
-
-function abrirTrocaSenha(botao, email){
-  const linha = botao.closest('tr');
-  if(linha.nextElementSibling && linha.nextElementSibling.dataset.form === '1'){
-    linha.nextElementSibling.remove();
-    return;
-  }
-  document.querySelectorAll('#tb-senhas tr[data-form="1"]').forEach(r => r.remove());
-
-  const nova = document.createElement('tr');
-  nova.dataset.form = '1';
-  nova.innerHTML =
-    '<td colspan="4" style="background:var(--sunk)">' +
-      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0">' +
-        '<input type="password" placeholder="' + t('ph.novasenha') + '" autocomplete="new-password" ' +
-          'style="max-width:190px" data-campo="s1">' +
-        '<input type="password" placeholder="' + t('ph.repita') + '" autocomplete="new-password" ' +
-          'style="max-width:190px" data-campo="s2">' +
-        '<button class="mini forte" data-acao="salvar">' + t('btn.salvar') + '</button>' +
-        '<button class="mini" data-acao="cancelar">' + t('btn.cancelar') + '</button>' +
-        '<span style="font-size:11.5px;color:var(--ink-3)">' + t('min8') + '</span>' +
-      '</div>' +
-    '</td>';
-  linha.after(nova);
-
-  const s1 = nova.querySelector('[data-campo="s1"]');
-  const s2 = nova.querySelector('[data-campo="s2"]');
-  nova.querySelector('[data-acao="cancelar"]').onclick = () => nova.remove();
-  nova.querySelector('[data-acao="salvar"]').onclick = async (ev) => {
-    if(s1.value !== s2.value){ toast(t('senha.naoconferem')); s2.focus(); return; }
-    if(s1.value.length < 8){ toast(t('senha.curta')); s1.focus(); return; }
-    const btn = ev.target; btn.disabled = true; btn.textContent = t('btn.salvando');
-    const erro = await trocarSenha(email, s1.value);
-    btn.disabled = false; btn.textContent = t('btn.salvar');
-    if(erro){ toast(erro); return; }
-    nova.remove();
-    toast(t('senha.avisar'));
-  };
-  s1.focus();
-}
-
-// A troca roda na Edge Function: é lá que mora a chave capaz de alterar
-// senhas, e é lá que se confere se quem pediu tem direito.
-async function trocarSenha(email, senha){
-  const { data:{ session } } = await sb.auth.getSession();
-  if(!session) return t('erro.expirada');
-  try{
-    const r = await fetch(SUPABASE_URL + '/functions/v1/alterar-senha', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + session.access_token,
-        'apikey': SUPABASE_ANON,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, senha })
-    });
-    const corpo = await r.json().catch(() => ({}));
-    return r.ok ? null : (corpo.erro || t('senha.naosalvou'));
-  }catch(e){
-    return t('erro.conexao');
-  }
-}
-
-/* ============================================================
    GESTÃO DO CATÁLOGO
    ============================================================ */
 async function carregarGestao(){
   carregarPessoas();
-  carregarSenhas();
   return carregarFerramentas();
 }
 
 async function carregarFerramentas(){
-  const [{ data:fs, error:e1 }, { data:acs, error:e2 }] = await Promise.all([
-    sb.from('app_ferramentas').select('*').order('ordem'),
-    sb.from('app_acessos').select('*').eq('nivel','usuario').is('user_id', null)
-  ]);
+  const { data:fs, error } = await sb.from('app_ferramentas').select('*').order('ordem');
   const tb = $('tb-ferramentas');
-  if(e1 || e2){
-    tb.innerHTML = '<tr><td colspan="6" class="estado">' + t('naocarregou') + '</td></tr>';
+  if(error){
+    tb.innerHTML = '<tr><td colspan="5" class="estado">' + t('naocarregou') + '</td></tr>';
     return;
   }
-  const comum = new Set(acs.map(a => a.ferramenta));
 
   tb.innerHTML = fs.map(f => {
-    const liberada = comum.has(f.slug);
     return '<tr>' +
       '<td class="text" style="color:var(--ink-3)">' + escapar(f.slug) + '</td>' +
       '<td class="text"><input type="text" value="' + escapar(f.nome) + '" style="max-width:135px"' +
@@ -1700,13 +1484,10 @@ async function carregarFerramentas(){
         ' onchange="salvarFerramenta(\'' + f.slug + '\',\'descricao\',this.value)"></td>' +
       '<td class="text"><input type="text" class="url-campo" value="' + escapar(f.url) + '"' +
         ' placeholder="https://…" onchange="salvarFerramenta(\'' + f.slug + '\',\'url\',this.value)"></td>' +
-      '<td class="text"><button class="pilula ' + (liberada ? 'sim' : 'nao') + '"' +
-        ' onclick="alternarAcesso(\'' + f.slug + '\',' + (!liberada) + ')">' +
-        (liberada ? t('ferr.liberada') : t('ferr.sogestao')) + '</button></td>' +
       '<td class="acao"><button class="mini" onclick="removerFerramenta(\'' + f.slug + '\')">' +
         t('ferr.remover') + '</button></td>' +
     '</tr>';
-  }).join('') || '<tr><td colspan="6" class="estado">' + t('ferr.vazio') + '</td></tr>';
+  }).join('') || '<tr><td colspan="5" class="estado">' + t('ferr.vazio') + '</td></tr>';
 }
 
 async function salvarFerramenta(slug, campo, valor){
@@ -1725,7 +1506,7 @@ async function novaFerramenta(){
     slug, nome, url, icone: nome.replace(/\s/g,'').slice(0,2).toUpperCase(), ordem: 99
   });
   if(error){ toast(t('ferr.naocriou', { e: error.message })); return; }
-  await sb.from('app_acessos').insert({ nivel:'usuario', ferramenta:slug, permissao:'editar' });
+  // Ferramenta nova nasce fechada: quem libera é o Acessos de cada pessoa.
   toast(t('ferr.criada', { nome, slug }));
   carregarFerramentas();
 }
@@ -1734,15 +1515,6 @@ async function removerFerramenta(slug){
   if(!confirm(t('ferr.removerconf', { slug }))) return;
   const { error } = await sb.from('app_ferramentas').delete().eq('slug', slug);
   toast(error ? t('ferr.naoremoveu', { e: error.message }) : t('ferr.removida'));
-  carregarFerramentas();
-}
-
-async function alternarAcesso(slug, liberar){
-  const { error } = liberar
-    ? await sb.from('app_acessos').insert({ nivel:'usuario', ferramenta:slug, permissao:'editar' })
-    : await sb.from('app_acessos').delete()
-        .eq('nivel','usuario').eq('ferramenta', slug).is('user_id', null);
-  if(error) toast(t('ferr.naosalvou', { e: error.message }));
   carregarFerramentas();
 }
 
