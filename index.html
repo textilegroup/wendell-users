@@ -502,6 +502,27 @@ try{
 
       <div class="card">
         <div class="card-hd">
+          <h2 data-i18n="as.ass">Assinaturas cadastradas</h2>
+          <span class="sub" data-i18n="as.ass.sub">Uma por pessoa</span>
+        </div>
+        <div class="card-bd" style="padding-bottom:0">
+          <p class="dica" data-i18n-html="as.ass.dica"></p>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th class="text" data-i18n="th.assinatura">Nome na assinatura</th>
+              <th class="text" data-i18n="th.email">E-mail</th>
+              <th data-i18n="th.desde">Desde</th>
+              <th class="text" data-i18n="th.valida">Válida</th>
+            </tr></thead>
+            <tbody id="tb-assinantes"><tr><td colspan="4" class="estado">…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
           <h2 data-i18n="as.fluxos">Processos e etapas</h2>
           <span class="sub" data-i18n="as.fluxos.sub">O que cada processo exige</span>
         </div>
@@ -837,7 +858,21 @@ pt: {
   'as.link.dica':'É o mesmo endereço em todas as etapas: quem abrir cai na assinatura que estiver pendente.',
   'as.link.semmodelo':'Este processo não tem link de assinatura cadastrado.',
   'as.link.semref':'Este registro não tem referência do Bitrix para montar o link.',
-  'as.link.wpp':'Abrir no WhatsApp'
+  'as.link.wpp':'Abrir no WhatsApp',
+
+  'as.ass':'Assinaturas cadastradas',
+  'as.ass.sub':'Uma por pessoa',
+  'as.ass.dica':'Cada pessoa do hub tem uma assinatura: o <b>nome</b> como ele aparece quando ela assina, e a <b>data</b> em que a assinatura passou a valer. Só quem está <b>válida</b> pode ser escolhida como assinadora de uma etapa — e só ela consegue assinar.',
+  'th.assinatura':'Nome na assinatura',
+  'th.valida':'Válida',
+  'th.desde':'Desde',
+  'as.ass.valida':'válida',
+  'as.ass.invalida':'sem assinatura',
+  'as.ass.vazio':'Nenhuma pessoa cadastrada.',
+  'as.ass.naosalvou':'Não foi possível salvar: {e}',
+  'as.ass.emuso':'Esta assinatura está escolhida em {n} etapa(s). Desligar impede a pessoa de assinar — as etapas continuam apontando para ela até você trocar.',
+  'as.et.escolher':'— escolher —',
+  'as.et.naosalvou':'Não foi possível trocar o assinador: {e}'
 },
 en: {
   'app.titulo':'Access Center',
@@ -1018,6 +1053,19 @@ en: {
   'as.link.semmodelo':'This process has no signing link configured.',
   'as.link.semref':'This record has no Bitrix reference to build the link from.',
   'as.link.wpp':'Open in WhatsApp',
+  'as.ass':'Registered signatures',
+  'as.ass.sub':'One per person',
+  'as.ass.dica':'Each person in the hub has a signature: the <b>name</b> shown when they sign, and the <b>date</b> it became valid. Only a <b>valid</b> signature can be chosen for a step — and only it can sign.',
+  'th.assinatura':'Name on the signature',
+  'th.valida':'Valid',
+  'th.desde':'Since',
+  'as.ass.valida':'valid',
+  'as.ass.invalida':'no signature',
+  'as.ass.vazio':'No one registered.',
+  'as.ass.naosalvou':'Could not save: {e}',
+  'as.ass.emuso':'This signature is chosen on {n} step(s). Turning it off stops the person signing — the steps keep pointing at them until you change it.',
+  'as.et.escolher':'— choose —',
+  'as.et.naosalvou':'Could not change the signer: {e}',
   'ferr.pnome':'Tool name:',
   'ferr.pchave':'Key — no spaces or accents (e.g. orders):',
   'ferr.purl':'Full URL of the HTML:',
@@ -1723,7 +1771,9 @@ async function excluirPessoa(user_id, nome){
    GESTÃO DO CATÁLOGO
    ============================================================ */
 async function carregarGestao(){
-  carregarPessoas();
+  // Pessoas primeiro: o cadastro de assinaturas se apoia nessa lista
+  // para mostrar todo mundo e trazer o e-mail de cada um.
+  await carregarPessoas();
   carregarAssinaturas();
   return carregarFerramentas();
 }
@@ -1739,7 +1789,7 @@ async function carregarGestao(){
    assin_fluxo_etapas), não aqui. Acrescentar uma etapa ou trocar
    um responsável é cadastro, não alteração desta página.
    ============================================================ */
-let FLUXOS = [], ETAPAS = [], SOLICITACOES = [], ASSINATURAS = [];
+let FLUXOS = [], ETAPAS = [], SOLICITACOES = [], ASSINATURAS = [], ASSINANTES = [];
 
 function abrirAba(qual){
   const ehAssin = qual === 'assin';
@@ -1751,11 +1801,12 @@ function abrirAba(qual){
 
 async function carregarAssinaturas(){
   const tb = $('tb-assinaturas');
-  const [rf, re, rs, ra] = await Promise.all([
+  const [rf, re, rs, ra, rn] = await Promise.all([
     sb.from('assin_fluxos').select('*').eq('ativo', true).order('nome'),
     sb.from('assin_fluxo_etapas').select('*').eq('ativo', true).order('ordem'),
     sb.from('assin_solicitacoes').select('*').order('atualizado_em', { ascending:false }).limit(500),
-    sb.from('assin_assinaturas').select('*').order('ordem')
+    sb.from('assin_assinaturas').select('*').order('ordem'),
+    sb.from('assin_assinantes').select('*').order('nome')
   ]);
   if(rf.error || re.error || rs.error || ra.error){
     tb.innerHTML = '<tr><td colspan="8" class="estado">' + t('naocarregou') + '</td></tr>';
@@ -1763,8 +1814,10 @@ async function carregarAssinaturas(){
   }
   FLUXOS = rf.data || []; ETAPAS = re.data || [];
   SOLICITACOES = rs.data || []; ASSINATURAS = ra.data || [];
+  ASSINANTES = rn.error ? [] : (rn.data || []);
 
   montarFiltrosAssin();
+  pintarAssinantes();
   pintarFluxos();
   pintarAssinaturas();
 }
@@ -1912,6 +1965,73 @@ function pintarAssinaturas(){
   atualizarBarraSelAssin();
 }
 
+/* ── Cadastro de assinantes ─────────────────────────────────
+   Uma assinatura por pessoa: o nome que aparece quando ela
+   assina e a data em que passou a valer. Desligar aqui tira a
+   pessoa da lista de assinadores e impede que ela assine.
+   ─────────────────────────────────────────────────────────── */
+function assinanteDe(uid){ return ASSINANTES.find(a => a.user_id === uid) || null; }
+function assinantesValidos(){
+  return ASSINANTES.filter(a => a.ativo).sort((a,b) => a.nome.localeCompare(b.nome));
+}
+
+function pintarAssinantes(){
+  const tb = $('tb-assinantes');
+  if(!tb) return;
+  // A lista sai das Pessoas do hub, para ninguém ficar de fora por engano
+  const base = (PESSOAS_CACHE.length ? PESSOAS_CACHE : []).slice()
+    .sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+  const linhas = base.length ? base : ASSINANTES.map(a => ({ user_id:a.user_id, nome:a.nome, email:'' }));
+  if(!linhas.length){
+    tb.innerHTML = '<tr><td colspan="4" class="estado">' + t('as.ass.vazio') + '</td></tr>';
+    return;
+  }
+  tb.innerHTML = linhas.map(u => {
+    const a  = assinanteDe(u.user_id);
+    const ok = !!(a && a.ativo);
+    return '<tr>' +
+      '<td class="text"><input type="text" value="' + escapar(a ? a.nome : (u.nome || '')) + '"' +
+        ' style="max-width:200px" onchange="salvarAssinante(\'' + u.user_id + '\',\'nome\',this.value)"></td>' +
+      '<td class="text email">' + escapar(u.email || '') + '</td>' +
+      '<td><input type="date" value="' + escapar(a ? a.valido_desde : '') + '"' +
+        ' onchange="salvarAssinante(\'' + u.user_id + '\',\'valido_desde\',this.value)"></td>' +
+      '<td class="text"><button class="pilula ' + (ok ? 'sim' : 'nao') + '"' +
+        ' onclick="alternarAssinante(\'' + u.user_id + '\',' + (ok ? 'false' : 'true') + ')">' +
+        (ok ? t('as.ass.valida') : t('as.ass.invalida')) + '</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function salvarAssinante(uid, campo, valor){
+  if(campo === 'valido_desde' && !valor) return;
+  const existe = assinanteDe(uid);
+  const pessoa = PESSOAS_CACHE.find(p => p.user_id === uid);
+  const base = {
+    user_id: uid,
+    nome: (existe && existe.nome) || (pessoa && pessoa.nome) || '',
+    valido_desde: (existe && existe.valido_desde) || new Date().toISOString().slice(0,10),
+    ativo: existe ? existe.ativo : true,
+    organizacao: (existe && existe.organizacao) || (pessoa && pessoa.organizacao) || ORG
+  };
+  base[campo] = valor;
+  base.atualizado_em = new Date().toISOString();
+
+  const { error } = await sb.from('assin_assinantes').upsert(base, { onConflict:'user_id' });
+  if(error){ toast(t('as.ass.naosalvou', { e: error.message })); return; }
+  toast(t('salvo'));
+  carregarAssinaturas();
+}
+
+async function alternarAssinante(uid, ligar){
+  // Desligar alguém que é assinador de alguma etapa merece aviso:
+  // a etapa continua apontando para a pessoa, que não poderá assinar.
+  if(!ligar){
+    const usos = ETAPAS.filter(e => e.responsavel_user_id === uid).length;
+    if(usos && !confirm(t('as.ass.emuso', { n: usos }))) return;
+  }
+  return salvarAssinante(uid, 'ativo', ligar);
+}
+
 function pintarFluxos(){
   const tb = $('tb-fluxos');
   const linhas = [];
@@ -1930,7 +2050,7 @@ function pintarFluxos(){
         '<td class="text">' + (e.assinada_em === 'bitrix'
             ? '<span class="selo alerta">' + t('as.onde.bitrix') + '</span>'
             : '<span class="selo">' + t('as.onde.html') + '</span>') + '</td>' +
-        '<td class="text">' + escapar(e.responsavel_nome || t('as.semresp')) + '</td>' +
+        '<td class="text">' + seletorAssinador(e) + '</td>' +
         '<td class="text" style="color:var(--ink-3)">' + escapar(campoBitrix(f, e)) + '</td>' +
       '</tr>');
     });
@@ -2139,6 +2259,42 @@ async function mudarAnulacaoAssin(id, ordem, anular){
   if(error){ toast(t('as.det.naosalvou', { e: error.message })); return; }
   toast(t('salvo'));
   fecharDetalheAssin();
+  carregarAssinaturas();
+}
+
+// Assinador da etapa: escolhido entre as assinaturas válidas.
+// Se a etapa aponta para alguém que perdeu a validade, ele continua
+// listado e marcado, para você ver que precisa trocar.
+function seletorAssinador(e){
+  const validos = assinantesValidos();
+  const atual   = e.responsavel_user_id || '';
+  const orfao   = atual && !validos.some(v => v.user_id === atual);
+  let html = '<select onchange="trocarAssinadorEtapa(\'' + e.id + '\', this.value)" style="max-width:190px">';
+  html += '<option value=""' + (!atual ? ' selected' : '') + '>' + t('as.et.escolher') + '</option>';
+  validos.forEach(v => {
+    html += '<option value="' + escapar(v.user_id) + '"' + (v.user_id === atual ? ' selected' : '') + '>' +
+            escapar(v.nome) + '</option>';
+  });
+  if(orfao){
+    html += '<option value="' + escapar(atual) + '" selected>' +
+            escapar(e.responsavel_nome || '—') + ' · ' + t('as.ass.invalida') + '</option>';
+  }
+  html += '</select>';
+  return html;
+}
+
+async function trocarAssinadorEtapa(etapaId, uid){
+  const pessoa = PESSOAS_CACHE.find(p => p.user_id === uid);
+  const ass    = assinanteDe(uid);
+  const campos = uid
+    ? { responsavel_user_id: uid,
+        responsavel_nome:  (ass && ass.nome) || (pessoa && pessoa.nome) || null,
+        responsavel_email: (pessoa && pessoa.email) || null }
+    : { responsavel_user_id: null, responsavel_nome: null, responsavel_email: null };
+
+  const { error } = await sb.from('assin_fluxo_etapas').update(campos).eq('id', etapaId);
+  if(error){ toast(t('as.et.naosalvou', { e: error.message })); return; }
+  toast(t('salvo'));
   carregarAssinaturas();
 }
 
