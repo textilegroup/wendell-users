@@ -831,7 +831,13 @@ pt: {
   'as.det.restaurar.conf':'Restaurar a assinatura da etapa {n}?',
   'as.det.anuladapor':'anulada por',
   'as.det.naosalvou':'Não foi possível: {e}',
-  'as.det.fechar':'Fechar'
+  'as.det.fechar':'Fechar',
+  'btn.link':'Link',
+  'as.link.titulo':'Link de assinatura',
+  'as.link.dica':'É o mesmo endereço em todas as etapas: quem abrir cai na assinatura que estiver pendente.',
+  'as.link.semmodelo':'Este processo não tem link de assinatura cadastrado.',
+  'as.link.semref':'Este registro não tem referência do Bitrix para montar o link.',
+  'as.link.wpp':'Abrir no WhatsApp'
 },
 en: {
   'app.titulo':'Access Center',
@@ -1006,6 +1012,12 @@ en: {
   'as.det.anuladapor':'annulled by',
   'as.det.naosalvou':'Could not do it: {e}',
   'as.det.fechar':'Close',
+  'btn.link':'Link',
+  'as.link.titulo':'Signing link',
+  'as.link.dica':'Same address for every step: whoever opens it lands on the signature that is pending.',
+  'as.link.semmodelo':'This process has no signing link configured.',
+  'as.link.semref':'This record has no Bitrix reference to build the link from.',
+  'as.link.wpp':'Open in WhatsApp',
   'ferr.pnome':'Tool name:',
   'ferr.pchave':'Key — no spaces or accents (e.g. orders):',
   'ferr.purl':'Full URL of the HTML:',
@@ -1891,8 +1903,10 @@ function pintarAssinaturas(){
       '<td class="text">' + aguardando + '</td>' +
       '<td class="text">' + listaAssin + '</td>' +
       '<td style="white-space:nowrap;font-size:11px;color:var(--ink-2)">' + dataCurta(s.atualizado_em) + '</td>' +
-      '<td class="acao"><button class="mini" onclick="abrirDetalheAssin(this,\'' + s.id + '\')">' +
-        t('btn.abrir') + '</button></td>' +
+      '<td class="acao" style="white-space:nowrap">' +
+        '<button class="mini" onclick="mostrarLinkAssin(this,\'' + s.id + '\')">' + t('btn.link') + '</button> ' +
+        '<button class="mini" onclick="abrirDetalheAssin(this,\'' + s.id + '\')">' + t('btn.abrir') + '</button>' +
+      '</td>' +
     '</tr>';
   }).join('');
   atualizarBarraSelAssin();
@@ -1973,17 +1987,82 @@ async function excluirAssinaturasSelecionadas(){
   carregarAssinaturas();
 }
 
+/* ── Link de assinatura ─────────────────────────────────────
+   O endereço vem do cadastro do fluxo (assin_fluxos.link_assinatura),
+   não do código: quando a tela de assinar mudar de lugar, troca-se
+   o modelo no banco e todos os links passam a apontar para lá.
+   ─────────────────────────────────────────────────────────── */
+function montarLinkAssin(sol){
+  const fluxo = FLUXOS.find(f => f.id === sol.fluxo_id);
+  if(!fluxo || !fluxo.link_assinatura) return { erro: t('as.link.semmodelo') };
+  const modelo = fluxo.link_assinatura;
+  if(modelo.indexOf('{ref}') >= 0 && !sol.origem_ref) return { erro: t('as.link.semref') };
+  return { url: modelo
+    .replace('{ref}',    encodeURIComponent(sol.origem_ref || ''))
+    .replace('{id}',     encodeURIComponent(sol.id))
+    .replace('{origem}', encodeURIComponent(sol.origem_id || '')) };
+}
+
+function mostrarLinkAssin(botao, solId){
+  const linha = botao.closest('tr');
+  if(alternarPainelAssin(linha, 'link')) return;
+
+  const sol = SOLICITACOES.find(x => x.id === solId);
+  if(!sol) return;
+  const r = montarLinkAssin(sol);
+  if(r.erro){ toast(r.erro); return; }
+
+  const nova = document.createElement('tr');
+  nova.dataset.extra = '1';
+  nova.dataset.tipo  = 'link';
+  nova.innerHTML =
+    '<td colspan="8" style="background:var(--chip);padding:12px 14px">' +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+        '<strong style="font-size:12px">' + t('as.link.titulo') + '</strong>' +
+        '<input type="text" readonly value="' + escapar(r.url) + '"' +
+          ' style="flex:1;min-width:220px;font-size:12px" onclick="this.select()">' +
+        '<button class="mini forte" data-acao="copiar">' + t('btn.copiar') + '</button>' +
+        '<a class="mini" style="text-decoration:none;display:inline-block" target="_blank" rel="noopener"' +
+          ' href="https://wa.me/?text=' + encodeURIComponent(r.url) + '">' + t('as.link.wpp') + '</a>' +
+        '<button class="mini" data-acao="fechar">' + t('as.det.fechar') + '</button>' +
+        '<span style="min-width:100%;font-size:11px;color:var(--ink-3)">' + t('as.link.dica') + '</span>' +
+      '</div>' +
+    '</td>';
+  linha.after(nova);
+
+  nova.querySelector('[data-acao="fechar"]').onclick = () => nova.remove();
+  nova.querySelector('[data-acao="copiar"]').onclick = (ev) => {
+    navigator.clipboard.writeText(r.url).then(() => {
+      ev.target.textContent = t('btn.copiado');
+      setTimeout(() => { ev.target.textContent = t('btn.copiar'); }, 1600);
+    }).catch(() => {
+      // Sem permissão de área de transferência: o campo fica selecionado
+      // para a pessoa copiar na mão.
+      nova.querySelector('input').select();
+      toast(t('senha.naocopiou'));
+    });
+  };
+}
+
 /* ── Detalhe do registro: abrir para conferir e, se precisar,
       anular ou restaurar uma assinatura ──────────────────── */
 function fecharDetalheAssin(){
   document.querySelectorAll('#tb-assinaturas tr[data-extra="1"]').forEach(r => r.remove());
 }
 
-function abrirDetalheAssin(botao, solId){
-  const linha  = botao.closest('tr');
-  const aberta = linha.nextElementSibling && linha.nextElementSibling.dataset.extra === '1';
+// Os dois painéis (link e detalhe) ocupam a mesma linha extra. Sem distinguir
+// o tipo, clicar num enquanto o outro está aberto apenas fechava, sem abrir.
+// Devolve true quando já estava aberto o MESMO painel — aí é só fechar.
+function alternarPainelAssin(linha, tipo){
+  const irmao  = linha.nextElementSibling;
+  const mesmo  = irmao && irmao.dataset.extra === '1' && irmao.dataset.tipo === tipo;
   fecharDetalheAssin();
-  if(aberta) return;
+  return !!mesmo;
+}
+
+function abrirDetalheAssin(botao, solId){
+  const linha = botao.closest('tr');
+  if(alternarPainelAssin(linha, 'detalhe')) return;
 
   const sol = SOLICITACOES.find(x => x.id === solId);
   if(!sol) return;
@@ -2026,6 +2105,7 @@ function abrirDetalheAssin(botao, solId){
 
   const nova = document.createElement('tr');
   nova.dataset.extra = '1';
+  nova.dataset.tipo  = 'detalhe';
   nova.innerHTML =
     '<td colspan="8" style="background:var(--chip);padding:12px 14px">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
