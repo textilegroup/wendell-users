@@ -412,6 +412,103 @@ try{
     </section>
 
     <!-- GESTÃO -->
+    <!-- ABAS DA GESTÃO -->
+    <div class="tabs oculto" id="abas-gestao" style="margin-bottom:14px">
+      <button class="tab" id="aba-btn-gestao" aria-selected="true"
+              onclick="abrirAba('gestao')" data-i18n="aba.gestao">Pessoas e ferramentas</button>
+      <button class="tab" id="aba-btn-assin" aria-selected="false"
+              onclick="abrirAba('assin')" data-i18n="aba.assin">Assinaturas</button>
+    </div>
+
+    <!-- ASSINATURAS -->
+    <section id="pg-assinaturas" class="oculto">
+
+      <div class="kpis" style="margin-bottom:14px">
+        <div class="card kpi">
+          <span class="kpi-label" data-i18n="as.kpi.pendentes">Aguardando</span>
+          <span class="kpi-value" id="as-kpi-pend">—</span>
+          <span class="kpi-meta" id="as-kpi-pend-meta"></span>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-label" data-i18n="as.kpi.concluidas">Concluídas</span>
+          <span class="kpi-value" id="as-kpi-ok">—</span>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-label" data-i18n="as.kpi.reprovadas">Reprovadas</span>
+          <span class="kpi-value" id="as-kpi-rep">—</span>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-label" data-i18n="as.kpi.semregistro">Sem registro</span>
+          <span class="kpi-value" id="as-kpi-sem">—</span>
+          <span class="kpi-meta" data-i18n="as.kpi.semregistro.meta">aprovados antes do controle</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <h2 data-i18n="as.titulo">Assinaturas</h2>
+          <span class="sub" data-i18n="as.sub">Todos os processos, pendentes e concluídos</span>
+        </div>
+        <div class="card-bd" style="padding-bottom:12px">
+          <p class="dica" data-i18n="as.dica"></p>
+          <div class="filter-row" style="margin-top:12px">
+            <div class="filter-group">
+              <span class="filter-label" data-i18n="as.f.fluxo">Processo</span>
+              <select id="as-f-fluxo" onchange="pintarAssinaturas()"></select>
+            </div>
+            <div class="filter-group">
+              <span class="filter-label" data-i18n="as.f.situacao">Situação</span>
+              <select id="as-f-status" onchange="pintarAssinaturas()"></select>
+            </div>
+            <div class="filter-group">
+              <span class="filter-label" data-i18n="as.f.pessoa">Pessoa</span>
+              <select id="as-f-pessoa" onchange="pintarAssinaturas()"></select>
+            </div>
+            <div class="filter-group" style="flex:1;min-width:170px">
+              <span class="filter-label" data-i18n="as.f.busca">Buscar</span>
+              <input type="text" id="as-f-busca" placeholder="—" oninput="pintarAssinaturas()">
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th class="text" data-i18n="th.processo">Processo</th>
+              <th class="text" data-i18n="th.registro">Registro</th>
+              <th data-i18n="th.etapas">Etapas</th>
+              <th class="text" data-i18n="th.aguardando">Aguardando</th>
+              <th class="text" data-i18n="th.assinaturas">Assinaturas</th>
+              <th data-i18n="th.atualizado">Atualizado</th>
+            </tr></thead>
+            <tbody id="tb-assinaturas"><tr><td colspan="6" class="estado">…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <h2 data-i18n="as.fluxos">Processos e etapas</h2>
+          <span class="sub" data-i18n="as.fluxos.sub">O que cada processo exige</span>
+        </div>
+        <div class="card-bd" style="padding-bottom:0">
+          <p class="dica" data-i18n-html="as.fluxos.dica"></p>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th class="text" data-i18n="th.processo">Processo</th>
+              <th data-i18n="th.ordem">#</th>
+              <th class="text" data-i18n="th.etapa">Etapa</th>
+              <th class="text" data-i18n="th.onde">Onde assina</th>
+              <th class="text" data-i18n="th.responsavel">Responsável</th>
+              <th class="text" data-i18n="th.campobitrix">Campo Bitrix</th>
+            </tr></thead>
+            <tbody id="tb-fluxos"><tr><td colspan="6" class="estado">…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section id="pg-gestao" class="oculto">
 
       <!-- área 1: pessoas -->
@@ -651,7 +748,50 @@ pt: {
   'e.nao_pode_se_excluir':'Você não pode excluir a própria conta.',
   'e.ultimo_admin':'Esta é a última conta de gestão ativa — o acesso ficaria sem administrador.',
   'e.email_ja_existe':'Já existe conta com esse e-mail.',
-  'e.acao_desconhecida':'Ação desconhecida.'
+  'e.acao_desconhecida':'Ação desconhecida.',
+
+  /* ── Assinaturas ── */
+  'aba.gestao':'Pessoas e ferramentas',
+  'aba.assin':'Assinaturas',
+  'as.titulo':'Assinaturas',
+  'as.sub':'Todos os processos, pendentes e concluídos',
+  'as.dica':'Cada processo declara as assinaturas que exige. Esta tela mostra o que está parado e com quem, e o que já foi assinado — por quem e quando.',
+  'as.kpi.pendentes':'Aguardando',
+  'as.kpi.concluidas':'Concluídas',
+  'as.kpi.reprovadas':'Reprovadas',
+  'as.kpi.semregistro':'Sem registro',
+  'as.kpi.semregistro.meta':'aprovados antes do controle',
+  'as.f.fluxo':'Processo',
+  'as.f.situacao':'Situação',
+  'as.f.pessoa':'Pessoa',
+  'as.f.busca':'Buscar',
+  'as.f.todos':'Todos',
+  'as.st.pendente':'Aguardando',
+  'as.st.aprovado':'Concluído',
+  'as.st.reprovado':'Reprovado',
+  'th.processo':'Processo',
+  'th.registro':'Registro',
+  'th.etapas':'Etapas',
+  'th.aguardando':'Aguardando',
+  'th.assinaturas':'Assinaturas',
+  'th.atualizado':'Atualizado',
+  'as.vazio':'Nada encontrado com esses filtros.',
+  'as.semassin':'sem assinatura registrada',
+  'as.emnomede':'em nome de',
+  'as.aguardando.de':'com',
+  'as.concluido':'ciclo completo',
+  'as.interrompido':'interrompido pela reprovação',
+  'as.fluxos':'Processos e etapas',
+  'as.fluxos.sub':'O que cada processo exige',
+  'as.fluxos.dica':'A ordem das etapas é a ordem das assinaturas. <b>No Bitrix</b> marca a etapa que é dada fora desta tela — o sistema só espelha quando o campo do Deal vira Y.',
+  'th.ordem':'#',
+  'th.etapa':'Etapa',
+  'th.onde':'Onde assina',
+  'th.responsavel':'Responsável',
+  'th.campobitrix':'Campo Bitrix',
+  'as.onde.html':'Nesta tela',
+  'as.onde.bitrix':'No Bitrix',
+  'as.semresp':'sem responsável'
 },
 en: {
   'app.titulo':'Access Center',
@@ -758,6 +898,49 @@ en: {
 
 'ferr.remover':'Remove',
   'ferr.vazio':'No tools registered.',
+
+  /* ── Signatures ── */
+  'aba.gestao':'People and tools',
+  'aba.assin':'Signatures',
+  'as.titulo':'Signatures',
+  'as.sub':'Every process, pending and completed',
+  'as.dica':'Each process declares the signatures it requires. This screen shows what is waiting and on whom, and what has been signed — by whom and when.',
+  'as.kpi.pendentes':'Waiting',
+  'as.kpi.concluidas':'Completed',
+  'as.kpi.reprovadas':'Rejected',
+  'as.kpi.semregistro':'No record',
+  'as.kpi.semregistro.meta':'approved before tracking',
+  'as.f.fluxo':'Process',
+  'as.f.situacao':'Status',
+  'as.f.pessoa':'Person',
+  'as.f.busca':'Search',
+  'as.f.todos':'All',
+  'as.st.pendente':'Waiting',
+  'as.st.aprovado':'Completed',
+  'as.st.reprovado':'Rejected',
+  'th.processo':'Process',
+  'th.registro':'Record',
+  'th.etapas':'Steps',
+  'th.aguardando':'Waiting on',
+  'th.assinaturas':'Signatures',
+  'th.atualizado':'Updated',
+  'as.vazio':'Nothing matches these filters.',
+  'as.semassin':'no signature on record',
+  'as.emnomede':'on behalf of',
+  'as.aguardando.de':'with',
+  'as.concluido':'cycle complete',
+  'as.interrompido':'stopped by rejection',
+  'as.fluxos':'Processes and steps',
+  'as.fluxos.sub':'What each process requires',
+  'as.fluxos.dica':'Step order is signing order. <b>In Bitrix</b> marks a step signed outside this screen — the system only mirrors it when the Deal field turns Y.',
+  'th.ordem':'#',
+  'th.etapa':'Step',
+  'th.onde':'Signed where',
+  'th.responsavel':'Owner',
+  'th.campobitrix':'Bitrix field',
+  'as.onde.html':'On this screen',
+  'as.onde.bitrix':'In Bitrix',
+  'as.semresp':'no owner',
   'ferr.pnome':'Tool name:',
   'ferr.pchave':'Key — no spaces or accents (e.g. orders):',
   'ferr.purl':'Full URL of the HTML:',
@@ -1024,6 +1207,7 @@ async function entrarNoApp(vindoDoLogin){
   $('btn-trocar').classList.toggle('oculto', !!(EU.email || '').match(/^(acesso|gestao)@/));
 
   if(EH_GESTAO){
+    $('abas-gestao').classList.remove('oculto');
     $('pg-gestao').classList.remove('oculto');
     carregarGestao();
   }
@@ -1463,7 +1647,211 @@ async function excluirPessoa(user_id, nome){
    ============================================================ */
 async function carregarGestao(){
   carregarPessoas();
+  carregarAssinaturas();
   return carregarFerramentas();
+}
+
+/* ============================================================
+   ASSINATURAS
+   Painel de gestão: mostra, de todos os processos, o que está
+   parado e com quem, e o que já foi assinado — por quem e quando.
+   Quem assina não vem por aqui: chega pelo link, que abre a tela
+   de assinatura direto.
+
+   A regra de cada processo mora no banco (assin_fluxos e
+   assin_fluxo_etapas), não aqui. Acrescentar uma etapa ou trocar
+   um responsável é cadastro, não alteração desta página.
+   ============================================================ */
+let FLUXOS = [], ETAPAS = [], SOLICITACOES = [], ASSINATURAS = [];
+
+function abrirAba(qual){
+  const ehAssin = qual === 'assin';
+  $('pg-gestao').classList.toggle('oculto', ehAssin);
+  $('pg-assinaturas').classList.toggle('oculto', !ehAssin);
+  $('aba-btn-gestao').setAttribute('aria-selected', String(!ehAssin));
+  $('aba-btn-assin').setAttribute('aria-selected', String(ehAssin));
+}
+
+async function carregarAssinaturas(){
+  const tb = $('tb-assinaturas');
+  const [rf, re, rs, ra] = await Promise.all([
+    sb.from('assin_fluxos').select('*').eq('ativo', true).order('nome'),
+    sb.from('assin_fluxo_etapas').select('*').eq('ativo', true).order('ordem'),
+    sb.from('assin_solicitacoes').select('*').order('atualizado_em', { ascending:false }).limit(500),
+    sb.from('assin_assinaturas').select('*').order('ordem')
+  ]);
+  if(rf.error || re.error || rs.error || ra.error){
+    tb.innerHTML = '<tr><td colspan="6" class="estado">' + t('naocarregou') + '</td></tr>';
+    return;
+  }
+  FLUXOS = rf.data || []; ETAPAS = re.data || [];
+  SOLICITACOES = rs.data || []; ASSINATURAS = ra.data || [];
+
+  montarFiltrosAssin();
+  pintarFluxos();
+  pintarAssinaturas();
+}
+
+function etapasDo(fluxoId){
+  return ETAPAS.filter(e => e.fluxo_id === fluxoId).sort((a,b) => a.ordem - b.ordem);
+}
+function assinaturasDa(sol){
+  return ASSINATURAS.filter(a => a.solicitacao_id === sol.id && a.versao === sol.versao)
+                    .sort((a,b) => a.ordem - b.ordem);
+}
+function campoBitrix(fluxo, etapa){
+  return etapa.bitrix_campo_titulo || ((fluxo ? fluxo.bitrix_campo_prefixo : 'APROVADO') + etapa.ordem);
+}
+
+function montarFiltrosAssin(){
+  const opt = (v, txt, sel) => '<option value="' + escapar(v) + '"' + (sel?' selected':'') + '>' + escapar(txt) + '</option>';
+  const manter = id => $(id) ? $(id).value : '';
+  const vf = manter('as-f-fluxo'), vs = manter('as-f-status'), vp = manter('as-f-pessoa');
+
+  $('as-f-fluxo').innerHTML = opt('', t('as.f.todos'), !vf) +
+    FLUXOS.map(f => opt(f.id, f.nome, vf === f.id)).join('');
+
+  $('as-f-status').innerHTML = opt('', t('as.f.todos'), !vs) +
+    ['pendente','aprovado','reprovado'].map(st => opt(st, t('as.st.' + st), vs === st)).join('');
+
+  // Só quem realmente aparece em alguma assinatura ou como responsável
+  const pessoas = new Set();
+  ASSINATURAS.forEach(a => { if(a.nome) pessoas.add(a.nome); });
+  ETAPAS.forEach(e => { if(e.responsavel_nome) pessoas.add(e.responsavel_nome); });
+  $('as-f-pessoa').innerHTML = opt('', t('as.f.todos'), !vp) +
+    [...pessoas].sort((a,b) => a.localeCompare(b)).map(n => opt(n, n, vp === n)).join('');
+}
+
+function quemEstaSegurando(sol){
+  if(sol.status !== 'pendente') return null;
+  const et = etapasDo(sol.fluxo_id).find(e => e.ordem === (sol.etapas_concluidas || 0) + 1);
+  return et || null;
+}
+
+function pintarAssinaturas(){
+  const fFluxo  = $('as-f-fluxo').value;
+  const fStatus = $('as-f-status').value;
+  const fPessoa = $('as-f-pessoa').value;
+  const busca   = ($('as-f-busca').value || '').trim().toLowerCase();
+
+  let linhas = SOLICITACOES.slice();
+  if(fFluxo)  linhas = linhas.filter(s => s.fluxo_id === fFluxo);
+  if(fStatus) linhas = linhas.filter(s => s.status === fStatus);
+  if(busca)   linhas = linhas.filter(s => (s.titulo || '').toLowerCase().indexOf(busca) >= 0
+                                       || (s.origem_ref || '').toLowerCase().indexOf(busca) >= 0);
+  if(fPessoa) linhas = linhas.filter(s => {
+    const assinou = assinaturasDa(s).some(a => a.nome === fPessoa);
+    const seg = quemEstaSegurando(s);
+    return assinou || (seg && seg.responsavel_nome === fPessoa);
+  });
+
+  // KPIs sempre sobre o conjunto filtrado, para o número bater com a tabela
+  const pend = linhas.filter(s => s.status === 'pendente');
+  const ok   = linhas.filter(s => s.status === 'aprovado');
+  const rep  = linhas.filter(s => s.status === 'reprovado');
+  const sem  = ok.filter(s => assinaturasDa(s).length === 0);
+  $('as-kpi-pend').textContent = pend.length;
+  $('as-kpi-ok').textContent   = ok.length;
+  $('as-kpi-rep').textContent  = rep.length;
+  $('as-kpi-sem').textContent  = sem.length;
+
+  // Em quantas pessoas diferentes o pendente está parado
+  const comQuem = new Set();
+  pend.forEach(s => { const e = quemEstaSegurando(s); if(e && e.responsavel_nome) comQuem.add(e.responsavel_nome); });
+  $('as-kpi-pend-meta').textContent = comQuem.size
+    ? t('as.aguardando.de') + ' ' + [...comQuem].join(', ') : '';
+
+  const tb = $('tb-assinaturas');
+  if(!linhas.length){
+    tb.innerHTML = '<tr><td colspan="6" class="estado">' + t('as.vazio') + '</td></tr>';
+    return;
+  }
+
+  tb.innerHTML = linhas.map(s => {
+    const fluxo = FLUXOS.find(f => f.id === s.fluxo_id);
+    const total = etapasDo(s.fluxo_id).length || 0;
+    const dadas = assinaturasDa(s);
+    const seg   = quemEstaSegurando(s);
+
+    const selo = s.status === 'aprovado'
+      ? '<span class="pilula sim">' + t('as.st.aprovado') + '</span>'
+      : s.status === 'reprovado'
+        ? '<span class="selo alerta">' + t('as.st.reprovado') + '</span>'
+        : '<span class="selo">' + t('as.st.pendente') + '</span>';
+
+    const aguardando = seg
+      ? escapar(seg.responsavel_nome || t('as.semresp')) +
+        '<br><span style="font-size:10.5px;color:var(--ink-3)">' + escapar(seg.nome) +
+        (seg.assinada_em === 'bitrix' ? ' · ' + t('as.onde.bitrix') : '') + '</span>'
+      : '<span style="color:var(--ink-3)">' +
+          (s.status === 'reprovado' ? t('as.interrompido') : t('as.concluido')) + '</span>';
+
+    const listaAssin = dadas.length
+      ? dadas.map(a => {
+          const et = etapasDo(s.fluxo_id).find(e => e.ordem === a.ordem);
+          const ruim = a.decisao === 'reprovado';
+          return '<div style="padding:1px 0">' +
+            '<span style="color:var(--ink-3)">' + a.ordem + '.</span> ' +
+            '<span style="' + (ruim ? 'color:var(--wine)' : 'color:var(--pos)') + ';font-weight:600">' +
+              escapar(a.nome || '—') + '</span>' +
+            (a.em_nome_de ? ' <span style="font-size:10px;color:var(--ink-3)">' +
+              t('as.emnomede') + ' ' + escapar(a.em_nome_de) + '</span>' : '') +
+            (et && et.responsavel_nome && a.nome && et.responsavel_nome !== a.nome && !a.em_nome_de
+              ? ' <span style="font-size:10px;color:var(--s2)">' + t('as.emnomede') + ' ' +
+                escapar(et.responsavel_nome) + '</span>' : '') +
+            ' <span style="font-size:10px;color:var(--ink-3)">' + dataCurta(a.criado_em) + '</span>' +
+            (ruim && a.motivo
+              ? '<div style="font-size:10.5px;color:var(--wine);padding-left:14px">' +
+                escapar(a.motivo) + '</div>' : '') +
+          '</div>';
+        }).join('')
+      : '<span style="color:var(--ink-3);font-size:11px">' + t('as.semassin') + '</span>';
+
+    return '<tr>' +
+      '<td class="text">' + escapar(fluxo ? fluxo.nome : '—') + '</td>' +
+      '<td class="text">' + escapar(s.titulo || '—') +
+        (s.origem_ref ? '<br><span style="font-size:10.5px;color:var(--ink-3)">#' +
+          escapar(s.origem_ref) + (s.versao > 1 ? ' · v' + s.versao : '') + '</span>' : '') + '</td>' +
+      '<td style="white-space:nowrap">' + (s.etapas_concluidas || 0) + '/' + total + '<br>' + selo + '</td>' +
+      '<td class="text">' + aguardando + '</td>' +
+      '<td class="text">' + listaAssin + '</td>' +
+      '<td style="white-space:nowrap;font-size:11px;color:var(--ink-2)">' + dataCurta(s.atualizado_em) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function pintarFluxos(){
+  const tb = $('tb-fluxos');
+  const linhas = [];
+  FLUXOS.forEach(f => {
+    const es = etapasDo(f.id);
+    if(!es.length){
+      linhas.push('<tr><td class="text">' + escapar(f.nome) + '</td>' +
+                  '<td colspan="5" class="estado" style="padding:10px">—</td></tr>');
+      return;
+    }
+    es.forEach((e, i) => {
+      linhas.push('<tr>' +
+        '<td class="text">' + (i === 0 ? escapar(f.nome) : '') + '</td>' +
+        '<td>' + e.ordem + '</td>' +
+        '<td class="text">' + escapar(e.nome) + '</td>' +
+        '<td class="text">' + (e.assinada_em === 'bitrix'
+            ? '<span class="selo alerta">' + t('as.onde.bitrix') + '</span>'
+            : '<span class="selo">' + t('as.onde.html') + '</span>') + '</td>' +
+        '<td class="text">' + escapar(e.responsavel_nome || t('as.semresp')) + '</td>' +
+        '<td class="text" style="color:var(--ink-3)">' + escapar(campoBitrix(f, e)) + '</td>' +
+      '</tr>');
+    });
+  });
+  tb.innerHTML = linhas.join('') || '<tr><td colspan="6" class="estado">—</td></tr>';
+}
+
+function dataCurta(iso){
+  if(!iso) return '';
+  try{
+    return new Date(iso).toLocaleString(IDIOMA === 'en' ? 'en-GB' : 'pt-BR',
+      { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+  }catch(e){ return ''; }
 }
 
 async function carregarFerramentas(){
