@@ -242,6 +242,12 @@ td.acao{text-align:right}
 .mini.forte{background:var(--wine);border-color:var(--wine);color:#fff}
 .mini.forte:hover{background:var(--wine-deep);color:#fff}
 .estado{padding:26px;text-align:center;color:var(--ink-3);font-size:12px}
+.barra-sel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 14px 10px;padding:8px 12px;border:1px solid var(--wine-soft);
+  border-radius:8px;background:var(--chip);font-size:12px;font-weight:600}
+.barra-sel span{flex:1;min-width:110px}
+.mini.perigo{color:#fff;background:var(--wine);border-color:var(--wine)}
+.assin-anulada{text-decoration:line-through;opacity:.55}
 .url-campo{min-width:250px;width:100%}
 .dica{
   font-size:11.5px;color:var(--ink-2);background:var(--sunk);
@@ -470,17 +476,26 @@ try{
             </div>
           </div>
         </div>
+        <div class="barra-sel oculto" id="as-barra-sel">
+          <span id="as-sel-info"></span>
+          <button class="mini perigo" onclick="excluirAssinaturasSelecionadas()"
+                  data-i18n="as.sel.excluir">Excluir selecionados</button>
+          <button class="mini" onclick="limparSelecaoAssin()" data-i18n="as.sel.limpar">Limpar seleção</button>
+        </div>
         <div class="table-scroll">
           <table>
             <thead><tr>
+              <th style="width:30px"><input type="checkbox" id="as-todos"
+                    onchange="marcarTodosAssin(this.checked)" title=""></th>
               <th class="text" data-i18n="th.processo">Processo</th>
               <th class="text" data-i18n="th.registro">Registro</th>
               <th data-i18n="th.etapas">Etapas</th>
               <th class="text" data-i18n="th.aguardando">Aguardando</th>
               <th class="text" data-i18n="th.assinaturas">Assinaturas</th>
               <th data-i18n="th.atualizado">Atualizado</th>
+              <th></th>
             </tr></thead>
-            <tbody id="tb-assinaturas"><tr><td colspan="6" class="estado">…</td></tr></tbody>
+            <tbody id="tb-assinaturas"><tr><td colspan="8" class="estado">…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -791,7 +806,32 @@ pt: {
   'th.campobitrix':'Campo Bitrix',
   'as.onde.html':'Nesta tela',
   'as.onde.bitrix':'No Bitrix',
-  'as.semresp':'sem responsável'
+  'as.semresp':'sem responsável',
+  'as.sel.nenhum':'Nenhum selecionado',
+  'as.sel.um':'1 selecionado',
+  'as.sel.varios':'{n} selecionados',
+  'as.sel.excluir':'Excluir selecionados',
+  'as.sel.limpar':'Limpar seleção',
+  'as.sel.todos':'Selecionar todos os exibidos',
+  'as.excl.conf':'Excluir {n} registro(s) de assinatura?\n\nIsso apaga a solicitação e todas as assinaturas dela — inclusive as anuladas. Não tem volta.\n\nO pedido em si NÃO é apagado: se ele for alterado depois, a solicitação é recriada do zero, sem assinatura nenhuma.',
+  'as.excl.ok':'{n} registro(s) excluído(s).',
+  'as.excl.erro':'Não foi possível excluir: {e}',
+  'btn.abrir':'Abrir',
+  'as.det.titulo':'Assinaturas do registro',
+  'as.det.etapa':'Etapa',
+  'as.det.quem':'Assinou',
+  'as.det.quando':'Quando',
+  'as.det.situacao':'Situação',
+  'as.det.pendente':'ainda não assinada',
+  'as.det.valida':'válida',
+  'as.det.anulada':'anulada',
+  'as.det.anular':'Anular',
+  'as.det.restaurar':'Restaurar',
+  'as.det.anular.conf':'Anular a assinatura da etapa {n}?\n\nEla sai da contagem e a etapa volta a ficar pendente, mas continua no histórico e pode ser restaurada depois.',
+  'as.det.restaurar.conf':'Restaurar a assinatura da etapa {n}?',
+  'as.det.anuladapor':'anulada por',
+  'as.det.naosalvou':'Não foi possível: {e}',
+  'as.det.fechar':'Fechar'
 },
 en: {
   'app.titulo':'Access Center',
@@ -941,6 +981,31 @@ en: {
   'as.onde.html':'On this screen',
   'as.onde.bitrix':'In Bitrix',
   'as.semresp':'no owner',
+  'as.sel.nenhum':'None selected',
+  'as.sel.um':'1 selected',
+  'as.sel.varios':'{n} selected',
+  'as.sel.excluir':'Delete selected',
+  'as.sel.limpar':'Clear selection',
+  'as.sel.todos':'Select all shown',
+  'as.excl.conf':'Delete {n} signature record(s)?\n\nThis removes the request and all its signatures, annulled ones included. It cannot be undone.\n\nThe order itself is NOT deleted: if it changes later, the request is recreated from scratch with no signatures.',
+  'as.excl.ok':'{n} record(s) deleted.',
+  'as.excl.erro':'Could not delete: {e}',
+  'btn.abrir':'Open',
+  'as.det.titulo':'Signatures on this record',
+  'as.det.etapa':'Step',
+  'as.det.quem':'Signed by',
+  'as.det.quando':'When',
+  'as.det.situacao':'Status',
+  'as.det.pendente':'not signed yet',
+  'as.det.valida':'valid',
+  'as.det.anulada':'annulled',
+  'as.det.anular':'Annul',
+  'as.det.restaurar':'Restore',
+  'as.det.anular.conf':'Annul the signature on step {n}?\n\nIt leaves the count and the step reopens, but it stays in the history and can be restored later.',
+  'as.det.restaurar.conf':'Restore the signature on step {n}?',
+  'as.det.anuladapor':'annulled by',
+  'as.det.naosalvou':'Could not do it: {e}',
+  'as.det.fechar':'Close',
   'ferr.pnome':'Tool name:',
   'ferr.pchave':'Key — no spaces or accents (e.g. orders):',
   'ferr.purl':'Full URL of the HTML:',
@@ -1681,7 +1746,7 @@ async function carregarAssinaturas(){
     sb.from('assin_assinaturas').select('*').order('ordem')
   ]);
   if(rf.error || re.error || rs.error || ra.error){
-    tb.innerHTML = '<tr><td colspan="6" class="estado">' + t('naocarregou') + '</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="estado">' + t('naocarregou') + '</td></tr>';
     return;
   }
   FLUXOS = rf.data || []; ETAPAS = re.data || [];
@@ -1695,9 +1760,13 @@ async function carregarAssinaturas(){
 function etapasDo(fluxoId){
   return ETAPAS.filter(e => e.fluxo_id === fluxoId).sort((a,b) => a.ordem - b.ordem);
 }
-function assinaturasDa(sol){
-  return ASSINATURAS.filter(a => a.solicitacao_id === sol.id && a.versao === sol.versao)
-                    .sort((a,b) => a.ordem - b.ordem);
+// Por padrao so as validas — as anuladas nao contam para o ciclo.
+// comAnuladas = true para exibir o historico completo.
+function assinaturasDa(sol, comAnuladas){
+  return ASSINATURAS
+    .filter(a => a.solicitacao_id === sol.id && a.versao === sol.versao)
+    .filter(a => comAnuladas || !a.anulada_em)
+    .sort((a,b) => a.ordem - b.ordem);
 }
 function campoBitrix(fluxo, etapa){
   return etapa.bitrix_campo_titulo || ((fluxo ? fluxo.bitrix_campo_prefixo : 'APROVADO') + etapa.ordem);
@@ -1763,14 +1832,15 @@ function pintarAssinaturas(){
 
   const tb = $('tb-assinaturas');
   if(!linhas.length){
-    tb.innerHTML = '<tr><td colspan="6" class="estado">' + t('as.vazio') + '</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="estado">' + t('as.vazio') + '</td></tr>';
+    atualizarBarraSelAssin();
     return;
   }
 
   tb.innerHTML = linhas.map(s => {
     const fluxo = FLUXOS.find(f => f.id === s.fluxo_id);
     const total = etapasDo(s.fluxo_id).length || 0;
-    const dadas = assinaturasDa(s);
+    const dadas = assinaturasDa(s, true);   // inclui anuladas, para não sumirem do histórico
     const seg   = quemEstaSegurando(s);
 
     const selo = s.status === 'aprovado'
@@ -1790,7 +1860,8 @@ function pintarAssinaturas(){
       ? dadas.map(a => {
           const et = etapasDo(s.fluxo_id).find(e => e.ordem === a.ordem);
           const ruim = a.decisao === 'reprovado';
-          return '<div style="padding:1px 0">' +
+          const nula = !!a.anulada_em;
+          return '<div style="padding:1px 0"' + (nula ? ' class="assin-anulada"' : '') + '>' +
             '<span style="color:var(--ink-3)">' + a.ordem + '.</span> ' +
             '<span style="' + (ruim ? 'color:var(--wine)' : 'color:var(--pos)') + ';font-weight:600">' +
               escapar(a.nome || '—') + '</span>' +
@@ -1800,6 +1871,8 @@ function pintarAssinaturas(){
               ? ' <span style="font-size:10px;color:var(--s2)">' + t('as.emnomede') + ' ' +
                 escapar(et.responsavel_nome) + '</span>' : '') +
             ' <span style="font-size:10px;color:var(--ink-3)">' + dataCurta(a.criado_em) + '</span>' +
+            (nula ? ' <span style="font-size:10px;color:var(--ink-3)">· ' +
+              t('as.det.anulada') + '</span>' : '') +
             (ruim && a.motivo
               ? '<div style="font-size:10.5px;color:var(--wine);padding-left:14px">' +
                 escapar(a.motivo) + '</div>' : '') +
@@ -1808,6 +1881,8 @@ function pintarAssinaturas(){
       : '<span style="color:var(--ink-3);font-size:11px">' + t('as.semassin') + '</span>';
 
     return '<tr>' +
+      '<td><input type="checkbox" class="as-check" value="' + s.id + '"' +
+        (SEL_ASSIN.has(s.id) ? ' checked' : '') + ' onchange="alternarSelAssin(this)"></td>' +
       '<td class="text">' + escapar(fluxo ? fluxo.nome : '—') + '</td>' +
       '<td class="text">' + escapar(s.titulo || '—') +
         (s.origem_ref ? '<br><span style="font-size:10.5px;color:var(--ink-3)">#' +
@@ -1816,8 +1891,11 @@ function pintarAssinaturas(){
       '<td class="text">' + aguardando + '</td>' +
       '<td class="text">' + listaAssin + '</td>' +
       '<td style="white-space:nowrap;font-size:11px;color:var(--ink-2)">' + dataCurta(s.atualizado_em) + '</td>' +
+      '<td class="acao"><button class="mini" onclick="abrirDetalheAssin(this,\'' + s.id + '\')">' +
+        t('btn.abrir') + '</button></td>' +
     '</tr>';
   }).join('');
+  atualizarBarraSelAssin();
 }
 
 function pintarFluxos(){
@@ -1844,6 +1922,144 @@ function pintarFluxos(){
     });
   });
   tb.innerHTML = linhas.join('') || '<tr><td colspan="6" class="estado">—</td></tr>';
+}
+
+/* ── Seleção e exclusão ─────────────────────────────────────
+   Excluir apaga a solicitação e o histórico dela. Serve para
+   limpar registro de teste. Para desfazer uma assinatura sem
+   perder o rastro, use Abrir → Anular: a assinatura sai da
+   contagem mas continua no histórico e volta se precisar.
+   ─────────────────────────────────────────────────────────── */
+const SEL_ASSIN = new Set();
+
+function alternarSelAssin(chk){
+  chk.checked ? SEL_ASSIN.add(chk.value) : SEL_ASSIN.delete(chk.value);
+  atualizarBarraSelAssin();
+}
+function marcarTodosAssin(marcar){
+  document.querySelectorAll('#tb-assinaturas .as-check').forEach(c => {
+    c.checked = marcar;
+    marcar ? SEL_ASSIN.add(c.value) : SEL_ASSIN.delete(c.value);
+  });
+  atualizarBarraSelAssin();
+}
+function limparSelecaoAssin(){
+  SEL_ASSIN.clear();
+  const td = $('as-todos'); if(td) td.checked = false;
+  document.querySelectorAll('#tb-assinaturas .as-check').forEach(c => c.checked = false);
+  atualizarBarraSelAssin();
+}
+function atualizarBarraSelAssin(){
+  const n = SEL_ASSIN.size;
+  $('as-barra-sel').classList.toggle('oculto', n === 0);
+  $('as-sel-info').textContent = n === 0 ? t('as.sel.nenhum')
+    : n === 1 ? t('as.sel.um') : t('as.sel.varios', { n:n });
+  const td = $('as-todos');
+  if(td){
+    const vis = [...document.querySelectorAll('#tb-assinaturas .as-check')];
+    td.checked = vis.length > 0 && vis.every(c => c.checked);
+  }
+}
+
+async function excluirAssinaturasSelecionadas(){
+  const ids = [...SEL_ASSIN];
+  if(!ids.length) return;
+  if(!confirm(t('as.excl.conf', { n: ids.length }))) return;
+
+  const { error } = await sb.from('assin_solicitacoes').delete().in('id', ids);
+  if(error){ toast(t('as.excl.erro', { e: error.message })); return; }
+  toast(t('as.excl.ok', { n: ids.length }));
+  SEL_ASSIN.clear();
+  carregarAssinaturas();
+}
+
+/* ── Detalhe do registro: abrir para conferir e, se precisar,
+      anular ou restaurar uma assinatura ──────────────────── */
+function fecharDetalheAssin(){
+  document.querySelectorAll('#tb-assinaturas tr[data-extra="1"]').forEach(r => r.remove());
+}
+
+function abrirDetalheAssin(botao, solId){
+  const linha  = botao.closest('tr');
+  const aberta = linha.nextElementSibling && linha.nextElementSibling.dataset.extra === '1';
+  fecharDetalheAssin();
+  if(aberta) return;
+
+  const sol = SOLICITACOES.find(x => x.id === solId);
+  if(!sol) return;
+
+  const etapas = etapasDo(sol.fluxo_id);
+  const dadas  = assinaturasDa(sol, true);
+
+  const corpo = etapas.map(e => {
+    const a = dadas.find(x => x.ordem === e.ordem);
+    let situacao, acao = '';
+    if(!a){
+      situacao = '<span style="color:var(--ink-3)">' + t('as.det.pendente') + '</span>';
+    }else if(a.anulada_em){
+      situacao = '<span class="selo alerta">' + t('as.det.anulada') + '</span>' +
+        (a.anulada_por ? ' <span style="font-size:10px;color:var(--ink-3)">' +
+          t('as.det.anuladapor') + ' ' + escapar(a.anulada_por) + '</span>' : '');
+      acao = '<button class="mini" onclick="mudarAnulacaoAssin(' + a.id + ',' + e.ordem + ',false)">' +
+             t('as.det.restaurar') + '</button>';
+    }else{
+      situacao = '<span class="pilula sim">' + t('as.det.valida') + '</span>';
+      acao = '<button class="mini perigo" onclick="mudarAnulacaoAssin(' + a.id + ',' + e.ordem + ',true)">' +
+             t('as.det.anular') + '</button>';
+    }
+    return '<tr>' +
+      '<td style="width:34px;color:var(--ink-3)">' + e.ordem + '</td>' +
+      '<td class="text">' + escapar(e.nome) +
+        '<br><span style="font-size:10.5px;color:var(--ink-3)">' +
+        escapar(e.responsavel_nome || t('as.semresp')) +
+        (e.assinada_em === 'bitrix' ? ' · ' + t('as.onde.bitrix') : '') + '</span></td>' +
+      '<td class="text">' + (a ? escapar(a.nome || '—') +
+          (a.email ? '<br><span style="font-size:10.5px;color:var(--ink-3)">' +
+            escapar(a.email) + '</span>' : '') : '—') + '</td>' +
+      '<td style="white-space:nowrap;font-size:11px">' + (a ? dataCurta(a.criado_em) : '—') + '</td>' +
+      '<td class="text">' + situacao +
+        (a && a.motivo ? '<br><span style="font-size:10.5px;color:var(--wine)">' +
+          escapar(a.motivo) + '</span>' : '') + '</td>' +
+      '<td class="acao">' + acao + '</td>' +
+    '</tr>';
+  }).join('');
+
+  const nova = document.createElement('tr');
+  nova.dataset.extra = '1';
+  nova.innerHTML =
+    '<td colspan="8" style="background:var(--chip);padding:12px 14px">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+        '<strong style="font-size:12px">' + t('as.det.titulo') + '</strong>' +
+        '<span style="flex:1;font-size:11px;color:var(--ink-3)">' + escapar(sol.titulo || '') +
+          (sol.origem_ref ? ' · #' + escapar(sol.origem_ref) : '') +
+          (sol.versao > 1 ? ' · v' + sol.versao : '') + '</span>' +
+        '<button class="mini" onclick="fecharDetalheAssin()">' + t('as.det.fechar') + '</button>' +
+      '</div>' +
+      '<table style="width:100%"><thead><tr>' +
+        '<th>#</th>' +
+        '<th class="text">' + t('as.det.etapa') + '</th>' +
+        '<th class="text">' + t('as.det.quem') + '</th>' +
+        '<th>' + t('as.det.quando') + '</th>' +
+        '<th class="text">' + t('as.det.situacao') + '</th>' +
+        '<th></th>' +
+      '</tr></thead><tbody>' + corpo + '</tbody></table>' +
+    '</td>';
+  linha.after(nova);
+}
+
+async function mudarAnulacaoAssin(id, ordem, anular){
+  const pergunta = anular ? t('as.det.anular.conf', { n:ordem }) : t('as.det.restaurar.conf', { n:ordem });
+  if(!confirm(pergunta)) return;
+
+  const campos = anular
+    ? { anulada_em: new Date().toISOString(), anulada_por: (EU && (EU.nome || EU.email)) || null }
+    : { anulada_em: null, anulada_por: null };
+
+  const { error } = await sb.from('assin_assinaturas').update(campos).eq('id', id);
+  if(error){ toast(t('as.det.naosalvou', { e: error.message })); return; }
+  toast(t('salvo'));
+  fecharDetalheAssin();
+  carregarAssinaturas();
 }
 
 function dataCurta(iso){
